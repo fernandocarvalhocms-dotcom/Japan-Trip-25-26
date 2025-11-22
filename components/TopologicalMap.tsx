@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { MapArea, MapNode, LabelPosition } from '../types';
 import { CloseIcon } from './icons';
@@ -8,39 +7,39 @@ interface TopologicalMapProps {
 }
 
 // Definição centralizada dos estilos e legendas
-const NODE_STYLES: Record<string, { bg: string; ring: string; label: string; dotColor: string }> = {
+const NODE_STYLES: Record<string, { nodeClasses: string; ring: string; label: string; dotColor: string }> = {
   station: { 
-    bg: 'bg-slate-800 dark:bg-slate-200', 
+    nodeClasses: 'bg-white dark:bg-slate-900 border-[2px] sm:border-[3px] border-slate-800 dark:border-slate-200', 
     ring: 'ring-slate-400', 
     label: 'Estação / Metrô',
     dotColor: 'bg-slate-800 dark:bg-slate-200'
   },
   landmark: { 
-    bg: 'bg-red-500', 
+    nodeClasses: 'bg-white dark:bg-slate-900 border-[2px] sm:border-[3px] border-red-500', 
     ring: 'ring-red-300', 
     label: 'Atração Turística',
     dotColor: 'bg-red-500'
   },
   spot: { 
-    bg: 'bg-red-500', 
+    nodeClasses: 'bg-white dark:bg-slate-900 border-[2px] sm:border-[3px] border-red-500', 
     ring: 'ring-red-300', 
     label: 'Atração Turística',
     dotColor: 'bg-red-500'
   },
   shop: { 
-    bg: 'bg-blue-500', 
+    nodeClasses: 'bg-white dark:bg-slate-900 border-[2px] sm:border-[3px] border-blue-500', 
     ring: 'ring-blue-300', 
     label: 'Compras',
     dotColor: 'bg-blue-500'
   },
   food: { 
-    bg: 'bg-orange-500', 
+    nodeClasses: 'bg-white dark:bg-slate-900 border-[2px] sm:border-[3px] border-orange-500', 
     ring: 'ring-orange-300', 
     label: 'Gastronomia',
     dotColor: 'bg-orange-500'
   },
   activity: { 
-    bg: 'bg-purple-500', 
+    nodeClasses: 'bg-white dark:bg-slate-900 border-[2px] sm:border-[3px] border-purple-500', 
     ring: 'ring-purple-300', 
     label: 'Atividade / Lazer',
     dotColor: 'bg-purple-500'
@@ -57,13 +56,14 @@ const MapLegend: React.FC = () => {
   ];
 
   return (
-    <div className="absolute bottom-4 right-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm p-3 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 z-10 max-w-[160px] sm:max-w-none">
-      <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2 tracking-wider">Legenda</h4>
-      <div className="space-y-2">
+    // Mobile: Top-Right (safe zone below header). Desktop: Bottom-Right
+    <div className="absolute top-20 right-2 md:top-auto md:bottom-4 md:right-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm p-2 md:p-3 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 z-10 max-w-[130px] sm:max-w-none scale-90 origin-top-right md:scale-100">
+      <h4 className="text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1.5 md:mb-2 tracking-wider">Legenda</h4>
+      <div className="space-y-1.5 md:space-y-2">
         {legendItems.map((item) => (
-          <div key={item.type} className="flex items-center gap-2">
-            <div className={`w-3 h-3 rounded-full ${item.dotColor} shadow-sm`}></div>
-            <span className="text-xs font-medium text-slate-700 dark:text-slate-300">{item.label}</span>
+          <div key={item.type} className="flex items-center gap-1.5 md:gap-2">
+            <div className={`w-2.5 h-2.5 md:w-3 md:h-3 rounded-full ${item.dotColor} shadow-sm`}></div>
+            <span className="text-[10px] md:text-xs font-medium text-slate-700 dark:text-slate-300 leading-none">{item.label}</span>
           </div>
         ))}
       </div>
@@ -85,23 +85,23 @@ const NodeMarker: React.FC<{
     switch (pos) {
       case 'bottom':
         return {
-          container: 'top-full mt-3 left-1/2 -translate-x-1/2',
+          container: 'top-full mt-1.5 sm:mt-3 left-1/2 -translate-x-1/2',
           arrow: '-top-1 left-1/2 -translate-x-1/2 border-t border-l bg-white dark:bg-slate-800'
         };
       case 'left':
         return {
-          container: 'right-full mr-3 top-1/2 -translate-y-1/2',
+          container: 'right-full mr-1.5 sm:mr-3 top-1/2 -translate-y-1/2',
           arrow: '-right-1 top-1/2 -translate-y-1/2 border-t border-r bg-white dark:bg-slate-800'
         };
       case 'right':
         return {
-          container: 'left-full ml-3 top-1/2 -translate-y-1/2',
+          container: 'left-full ml-1.5 sm:ml-3 top-1/2 -translate-y-1/2',
           arrow: '-left-1 top-1/2 -translate-y-1/2 border-b border-l bg-white dark:bg-slate-800'
         };
       case 'top':
       default:
         return {
-          container: 'bottom-full mb-3 left-1/2 -translate-x-1/2',
+          container: 'bottom-full mb-1.5 sm:mb-3 left-1/2 -translate-x-1/2',
           arrow: '-bottom-1 left-1/2 -translate-x-1/2 border-b border-r bg-white dark:bg-slate-800'
         };
     }
@@ -114,12 +114,12 @@ const NodeMarker: React.FC<{
       className={`absolute transform -translate-x-1/2 -translate-y-1/2 group transition-all duration-200 ${isSelected ? 'z-50' : 'z-20 hover:z-40'}`}
       style={{ left: `${node.x}%`, top: `${node.y}%` }}
     >
-      {/* Label */}
+      {/* Label - Compact on Mobile */}
       <div 
         className={`
-          absolute whitespace-nowrap px-2.5 py-1 
+          absolute whitespace-nowrap px-1.5 py-0.5 sm:px-2.5 sm:py-1 
           bg-white dark:bg-slate-800 rounded-md shadow-md border border-slate-200 dark:border-slate-600 
-          text-xs font-bold text-slate-800 dark:text-slate-100 pointer-events-none 
+          text-[10px] sm:text-xs font-bold text-slate-800 dark:text-slate-100 pointer-events-none 
           transition-all duration-200
           ${posClasses.container}
           ${isSelected ? 'opacity-100 scale-110 ring-2 ring-indigo-400 dark:ring-indigo-500' : 'opacity-100 lg:opacity-100'}
@@ -127,18 +127,19 @@ const NodeMarker: React.FC<{
       >
         {node.label}
         {/* Seta do tooltip */}
-        <div className={`absolute w-2 h-2 rotate-45 border-slate-200 dark:border-slate-600 ${posClasses.arrow}`}></div>
+        <div className={`absolute w-1.5 h-1.5 sm:w-2 sm:h-2 rotate-45 border-slate-200 dark:border-slate-600 ${posClasses.arrow}`}></div>
       </div>
 
       <button
         onClick={(e) => { e.stopPropagation(); onClick(); }}
         className={`
-          w-5 h-5 sm:w-6 sm:h-6 rounded-full shadow-md transition-all duration-300 flex items-center justify-center 
-          ${style.bg} 
-          ${isSelected ? `ring-4 ${style.ring} scale-125` : 'ring-2 ring-white dark:ring-slate-800 hover:scale-125 hover:ring-4 ' + style.ring}
+          w-4 h-4 sm:w-6 sm:h-6 rounded-full shadow-md transition-all duration-300 flex items-center justify-center 
+          ${style.nodeClasses} 
+          ${isSelected ? `ring-2 sm:ring-4 ${style.ring} scale-125` : 'hover:scale-125 hover:ring-4 ' + style.ring}
         `}
       >
-        {node.type === 'station' && <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-white dark:bg-slate-800 rounded-sm" />}
+        {/* Inner dot for stations (inverted color since bg is white) */}
+        {node.type === 'station' && <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-slate-800 dark:bg-slate-200 rounded-sm" />}
       </button>
     </div>
   );
@@ -152,16 +153,16 @@ const DetailPanel: React.FC<{ node: MapNode; onClose: () => void }> = ({ node, o
       bottom-4 left-4 right-4 
       md:bottom-6 md:left-6 md:right-auto md:top-auto md:w-80 lg:w-96
       bg-white/95 dark:bg-slate-800/95 backdrop-blur-md 
-      p-5 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 
+      p-4 sm:p-5 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 
       animate-fade-in flex flex-col"
-      style={{ maxHeight: '60vh' }}
+      style={{ maxHeight: '50vh' }}
     >
-      <div className="flex justify-between items-start mb-3 flex-shrink-0">
+      <div className="flex justify-between items-start mb-2 sm:mb-3 flex-shrink-0">
         <div className="flex items-center gap-2">
           <div className={`w-3 h-3 rounded-full ${style.dotColor}`}></div>
           <div>
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block">{style.label}</span>
-            <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 leading-tight">{node.label}</h3>
+            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block">{style.label}</span>
+            <h3 className="text-lg sm:text-xl font-bold text-slate-800 dark:text-slate-100 leading-tight">{node.label}</h3>
           </div>
         </div>
         <button onClick={onClose} className="p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors">
@@ -170,16 +171,16 @@ const DetailPanel: React.FC<{ node: MapNode; onClose: () => void }> = ({ node, o
       </div>
       
       <div className="overflow-y-auto pr-2 -mr-2 custom-scrollbar">
-        <p className="text-slate-600 dark:text-slate-300 text-sm mb-4 leading-relaxed">{node.description}</p>
+        <p className="text-slate-600 dark:text-slate-300 text-xs sm:text-sm mb-3 leading-relaxed">{node.description}</p>
         {node.tips && (
-          <div className="bg-amber-50 dark:bg-amber-900/20 p-3 rounded-md border-l-4 border-amber-400">
-            <p className="text-xs font-bold text-amber-700 dark:text-amber-500 mb-1 flex items-center gap-1">
+          <div className="bg-amber-50 dark:bg-amber-900/20 p-2 sm:p-3 rounded-md border-l-4 border-amber-400">
+            <p className="text-[10px] sm:text-xs font-bold text-amber-700 dark:text-amber-500 mb-1 flex items-center gap-1">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
                 <path fillRule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-7-4a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM9 9a.75.75 0 0 0 0 1.5h.253a.25.25 0 0 1 .244.304l-.459 2.066A1.75 1.75 0 0 0 10.747 15H11a.75.75 0 0 0 0-1.5h-.253a.25.25 0 0 1-.244-.304l.459-2.066A1.75 1.75 0 0 0 9.253 9H9Z" clipRule="evenodd" />
               </svg>
               Dica Local
             </p>
-            <p className="text-xs text-slate-700 dark:text-slate-300 italic">"{node.tips}"</p>
+            <p className="text-[10px] sm:text-xs text-slate-700 dark:text-slate-300 italic">"{node.tips}"</p>
           </div>
         )}
       </div>
@@ -205,7 +206,7 @@ export const TopologicalMap: React.FC<TopologicalMapProps> = ({ area }) => {
         <h2 className="text-3xl font-black text-slate-800 dark:text-slate-100 drop-shadow-sm tracking-tight">{area.title}</h2>
       </div>
 
-      {/* Info Overlay (Right) */}
+      {/* Info Overlay (Right) - Desktop Only */}
       <div className="absolute top-4 right-4 z-10 max-w-xs pointer-events-none hidden md:block">
         <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm p-3 rounded-lg shadow-sm border border-slate-200/50 dark:border-slate-700/50 pointer-events-auto">
           <p className="text-sm text-slate-600 dark:text-slate-300 leading-snug">
@@ -224,7 +225,7 @@ export const TopologicalMap: React.FC<TopologicalMapProps> = ({ area }) => {
 
       {/* Mobile Header (Simplified) */}
        <div className="absolute top-0 left-0 right-0 p-4 z-10 md:hidden bg-gradient-to-b from-slate-100/90 to-transparent dark:from-slate-900/90 pointer-events-none">
-          <h2 className="text-2xl font-black text-slate-800 dark:text-slate-100 drop-shadow-sm">{area.title}</h2>
+          <h2 className="text-xl font-black text-slate-800 dark:text-slate-100 drop-shadow-sm">{area.title}</h2>
        </div>
 
       {/* SVG Graph */}
@@ -257,9 +258,9 @@ export const TopologicalMap: React.FC<TopologicalMapProps> = ({ area }) => {
                    <rect 
                       x={`${(from.x + to.x) / 2}%`} 
                       y={`${(from.y + to.y) / 2}%`} 
-                      width="44" height="18" 
-                      rx="6" 
-                      transform={`translate(-22, -9)`}
+                      width="36" height="14" 
+                      rx="4" 
+                      transform={`translate(-18, -7)`}
                       className="fill-slate-100 dark:fill-slate-800 stroke-slate-300 dark:stroke-slate-600"
                       strokeWidth="1"
                    />
@@ -268,7 +269,7 @@ export const TopologicalMap: React.FC<TopologicalMapProps> = ({ area }) => {
                       y={`${(from.y + to.y) / 2}%`} 
                       textAnchor="middle" 
                       dominantBaseline="middle" 
-                      className="text-[10px] font-bold fill-slate-500 dark:fill-slate-400"
+                      className="text-[8px] sm:text-[10px] font-bold fill-slate-500 dark:fill-slate-400"
                    >
                      {edge.label}
                    </text>

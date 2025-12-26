@@ -1,45 +1,48 @@
 
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI } from '@google/genai';
 
 /**
- * Obtém sugestões da IA. 
- * Importante: A instância deve ser criada JIT (Just-In-Time) para capturar a chave ativa.
+ * Obtém sugestões da IA do Google Gemini.
+ * A instância é criada no momento da chamada para garantir que utilize 
+ * a chave de API mais recente disponível no ambiente (process.env.API_KEY).
  */
 export const getSuggestions = async (prompt: string): Promise<string> => {
-  // A chave é injetada dinamicamente pelo ambiente
-  const apiKey = process.env.API_KEY;
-
-  if (!apiKey || apiKey === "undefined" || apiKey.trim() === "") {
-    throw new Error("AUTH_REQUIRED");
+  // Always obtain the API key exclusively from process.env.API_KEY
+  if (!process.env.API_KEY) {
+    throw new Error("Chave da API não configurada. Se estiver no celular, clique no botão 'Ativar IA' no topo do aplicativo.");
   }
 
+  // Use process.env.API_KEY directly when initializing the GoogleGenAI client instance
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
   try {
-    // Instância nova a cada chamada conforme diretrizes para garantir chave atualizada
-    const ai = new GoogleGenAI({ apiKey });
-    
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-3-flash-preview', // Recommended model for basic text tasks
       contents: prompt,
     });
 
+    // Access the .text property directly on the GenerateContentResponse object
     const text = response.text;
-    if (!text) throw new Error("A IA não retornou conteúdo.");
+    if (!text) {
+      throw new Error("A IA retornou uma resposta sem conteúdo de texto.");
+    }
 
     return text;
   } catch (error: any) {
-    const errorMessage = error?.message || "";
-    console.error("Erro Gemini:", errorMessage);
-    
-    // Se a entidade não for encontrada ou a chave for inválida, solicitamos nova seleção
-    if (
-      errorMessage.includes("not found") || 
-      errorMessage.includes("API key") ||
-      errorMessage.includes("403") ||
-      errorMessage.includes("401")
-    ) {
-      throw new Error("AUTH_REQUIRED");
+    console.error("Erro na API Gemini:", error);
+
+    // Error handling for auth or project issues
+    if (error?.message?.includes("Requested entity was not found") || error?.message?.includes("API key")) {
+      throw new Error("Erro de autenticação: A chave selecionada é inválida ou o projeto não foi encontrado. Tente selecionar a chave novamente.");
+    }
+
+    let errorMessage = "Falha ao obter sugestões da IA. Por favor, tente novamente.";
+    if (error instanceof Error) {
+        if (error.message.includes("500") || error.message.includes("Rpc failed")) {
+            errorMessage = "Erro temporário no servidor de IA. Tente novamente em instantes.";
+        }
     }
     
-    throw new Error("Erro na conexão com a IA.");
+    throw new Error(errorMessage);
   }
 };

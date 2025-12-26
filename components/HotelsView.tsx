@@ -1,8 +1,9 @@
 
-import React, { useState, FormEvent } from 'react';
+import React, { useState, useEffect, FormEvent } from 'react';
 import { HotelReservation } from '../types';
 import { HotelIcon, TrashIcon } from './icons';
 
+// Hook de LocalStorage melhorado com suporte a drafts e re-sync
 function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T | ((val: T) => T)) => void] {
     const [storedValue, setStoredValue] = useState<T>(() => {
         if (typeof window === 'undefined') return initialValue;
@@ -10,7 +11,7 @@ function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T | ((val
             const item = window.localStorage.getItem(key);
             return item ? JSON.parse(item) : initialValue;
         } catch (error) {
-            console.error(error);
+            console.error(`Error loading key "${key}":`, error);
             return initialValue;
         }
     });
@@ -23,7 +24,7 @@ function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T | ((val
                 window.localStorage.setItem(key, JSON.stringify(valueToStore));
             }
         } catch (error) {
-            console.error(error);
+            console.error(`Error saving key "${key}":`, error);
         }
     };
     return [storedValue, setValue];
@@ -32,14 +33,16 @@ function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T | ((val
 const calculateNights = (start: string, end: string): number => {
     const date1 = new Date(start);
     const date2 = new Date(end);
+    if (isNaN(date1.getTime()) || isNaN(date2.getTime())) return 0;
     const diffTime = Math.abs(date2.getTime() - date1.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 };
 
 export const HotelsView: React.FC = () => {
     const [hotels, setHotels] = useLocalStorage<HotelReservation[]>('japanTripHotels', []);
-    const [formData, setFormData] = useState({
+    
+    // Persistindo o preenchimento do formulário (draft) em tempo real
+    const [formData, setFormData] = useLocalStorage('hotel_form_draft', {
         name: '',
         address: '',
         checkIn: '',
@@ -55,13 +58,19 @@ export const HotelsView: React.FC = () => {
             ...formData
         };
 
-        setHotels((prev) => [...prev, newHotel].sort((a, b) => new Date(a.checkIn).getTime() - new Date(b.checkIn).getTime()));
+        const updatedHotels = [...hotels, newHotel].sort((a, b) => 
+            new Date(a.checkIn).getTime() - new Date(b.checkIn).getTime()
+        );
+        
+        setHotels(updatedHotels);
+        
+        // Limpar o rascunho após adicionar com sucesso
         setFormData({ name: '', address: '', checkIn: '', checkOut: '' });
     };
 
     const handleDelete = (id: string) => {
         if (confirm('Tem certeza que deseja remover este hotel?')) {
-            setHotels((prev) => prev.filter(h => h.id !== id));
+            setHotels(hotels.filter(h => h.id !== id));
         }
     };
 
@@ -75,7 +84,9 @@ export const HotelsView: React.FC = () => {
             <div className="max-w-4xl mx-auto">
                 <div className="mb-8">
                     <h2 className="text-3xl font-bold text-slate-800 dark:text-slate-200">Hospedagens</h2>
-                    <p className="text-slate-500 dark:text-slate-400 mt-1">Organize suas reservas de hotel, datas de check-in e endereços.</p>
+                    <p className="text-slate-500 dark:text-slate-400 mt-1">
+                        Suas reservas são salvas automaticamente no navegador.
+                    </p>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -133,6 +144,9 @@ export const HotelsView: React.FC = () => {
                                 >
                                     Adicionar Reserva
                                 </button>
+                                <p className="text-[10px] text-slate-400 text-center italic mt-2">
+                                    Digitando... o formulário é salvo enquanto você escreve.
+                                </p>
                             </form>
                         </div>
                     </div>
@@ -142,7 +156,7 @@ export const HotelsView: React.FC = () => {
                         {hotels.length === 0 ? (
                             <div className="flex flex-col items-center justify-center h-64 bg-white dark:bg-slate-800 rounded-lg border border-dashed border-slate-300 dark:border-slate-700 text-slate-400 dark:text-slate-500">
                                 <HotelIcon className="w-12 h-12 mb-2 opacity-50" />
-                                <p>Nenhum hotel adicionado ainda.</p>
+                                <p>Nenhuma reserva salva ainda.</p>
                             </div>
                         ) : (
                             hotels.map(hotel => (

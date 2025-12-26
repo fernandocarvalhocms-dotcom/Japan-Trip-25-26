@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { ItineraryEvent } from '../types';
 import { ActivityIcon, getColorClassName } from './icons';
 import { getSuggestions } from '../services/geminiService';
@@ -8,110 +8,90 @@ interface EventCardProps {
   event: ItineraryEvent;
 }
 
+const Spinner: React.FC = () => (
+    <div className="flex justify-center items-center p-4">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500 dark:border-indigo-400"></div>
+    </div>
+);
+
 export const EventCard: React.FC<EventCardProps> = ({ event }) => {
-  const storageKey = `jap_tips_v5_${event.id}`;
-  const [tips, setTips] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const storageKey = `ai_suggestion_${event.id}`;
+  const [suggestions, setSuggestions] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Load from storage on mount
   useEffect(() => {
     const saved = localStorage.getItem(storageKey);
-    if (saved) setTips(saved);
+    if (saved) {
+      setSuggestions(saved);
+    }
   }, [storageKey]);
 
-  const triggerKeySelector = async () => {
-    const aistudio = (window as any).aistudio;
-    if (aistudio && typeof aistudio.openSelectKey === 'function') {
-      await aistudio.openSelectKey();
-      return true;
-    }
-    return false;
-  };
+  const handleEnhanceClick = useCallback(async () => {
+    if (suggestions) return; // Already has content
 
-  const handleAskAi = async () => {
-    if (loading || tips) return;
-    
-    setLoading(true);
+    setIsLoading(true);
     setError(null);
 
-    const prompt = `Como um guia expert no Japão, dê 3 dicas curtas para "${event.title}" em ${event.location}. Foque em: transporte, o que comer perto e uma dica cultural. Use Markdown.`;
+    const prompt = `Você é um assistente de viagens prestativo para o Japão. Forneça dicas práticas de viagem para visitar "${event.title}" em ${event.location}. Inclua:
+1.  **Transporte:** Uma rota de transporte público sugerida a partir de uma grande estação próxima (ex: Estação de Shinjuku, Estação de Quioto).
+2.  **Alimentação:** Três recomendações de restaurantes próximos com tipo de culinária e uma faixa de preço aproximada (ex: $, $$, $$$).
+3.  **Cultura/Dica:** Uma dica cultural local, uma regra de etiqueta ou uma sugestão de 'não perca' para este local específico.
+Formate a resposta em Markdown claro e conciso, com títulos em negrito.`;
 
     try {
       const result = await getSuggestions(prompt);
-      setTips(result);
+      setSuggestions(result);
       localStorage.setItem(storageKey, result);
-    } catch (err: any) {
-      if (err.message === "AUTH_REQUIRED") {
-        const opened = await triggerKeySelector();
-        if (opened) {
-          setError("Chave selecionada! Clique novamente para carregar.");
-        } else {
-          setError("Configure sua API Key no topo da página.");
-        }
-      } else {
-        setError(err.message || "Falha ao obter dicas.");
-      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An unknown error occurred.');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
-  };
+  }, [event.title, event.location, suggestions, storageKey]);
 
   const colorClass = getColorClassName(event.type);
 
   return (
-    <div className="relative group">
-      <div className={`absolute -left-[45px] top-0 h-9 w-9 rounded-full bg-white dark:bg-slate-900 flex items-center justify-center ring-4 ring-slate-50 dark:ring-slate-950 z-10 shadow-sm transition-transform active:scale-110`}>
-          <div className={`w-full h-full rounded-full flex items-center justify-center ${colorClass} bg-opacity-10`}>
+    <div className="relative">
+      {/* Icon on the timeline */}
+      <div className={`absolute -left-[45px] top-0 h-9 w-9 rounded-full bg-white dark:bg-slate-800 flex items-center justify-center ring-4 ring-white dark:ring-slate-800`}>
+          <div className={`w-full h-full rounded-full flex items-center justify-center ${colorClass} bg-opacity-10 dark:bg-opacity-20`}>
               <ActivityIcon type={event.type} className={`w-5 h-5 ${colorClass}`} />
           </div>
       </div>
 
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden active:ring-2 active:ring-indigo-500/20 transition-all duration-300">
-        <div className="p-4 relative">
-          <button
-            onClick={handleAskAi}
-            disabled={loading || !!tips}
-            className={`absolute top-4 right-4 z-20 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black transition-all shadow-sm
-              ${tips 
-                ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400 border border-green-200 dark:border-green-800' 
-                : 'bg-indigo-600 text-white hover:bg-indigo-700 active:scale-90'
-              } disabled:opacity-80`}
-          >
-            {loading ? '...' : tips ? 'DICAS ✨' : 'IA ✨'}
-          </button>
-
-          <div className="pr-16">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{event.time}</span>
-            <h4 className="font-bold text-slate-800 dark:text-slate-100 text-base mt-0.5 leading-tight">{event.title}</h4>
-          </div>
-          
-          <p className="text-slate-600 dark:text-slate-400 mt-2 text-xs leading-relaxed">{event.description}</p>
-          
-          <div className="flex items-center gap-1 mt-3 text-[10px] text-slate-400 font-bold uppercase">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-indigo-500" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-            </svg>
+      {/* Card content */}
+      <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200/80 dark:border-slate-700/60 overflow-hidden hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600 transition-all duration-300">
+        <div className="p-4">
+          <p className={`text-sm font-semibold text-slate-500 dark:text-slate-400`}>{event.time}</p>
+          <h4 className="font-bold text-slate-800 dark:text-slate-200 text-lg mt-1">{event.title}</h4>
+          <p className="text-slate-600 dark:text-slate-300 mt-1">{event.description}</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-2 flex items-center gap-1">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" /></svg>
             {event.location}
-          </div>
+          </p>
+          {event.suggestion && (
+            <div className="mt-3 bg-indigo-50 dark:bg-indigo-900/30 border-l-4 border-indigo-300 dark:border-indigo-600 p-3 rounded-r-md">
+              <p className="text-sm text-indigo-800 dark:text-indigo-200">{event.suggestion}</p>
+            </div>
+          )}
+          <button
+            onClick={handleEnhanceClick}
+            disabled={isLoading || !!suggestions}
+            className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors disabled:opacity-50 disabled:cursor-default"
+          >
+            {isLoading ? 'Carregando...' : suggestions ? 'Dicas da IA carregadas ✨' : 'Melhorar com IA ✨'}
+          </button>
         </div>
-
-        {(loading || error || tips) && (
-          <div className="bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 px-4 py-3 animate-fade-in">
-              {error && (
-                <div className="text-amber-600 dark:text-amber-400 text-[10px] font-bold">
-                  ⚠️ {error}
-                </div>
-              )}
-              {tips && (
-                  <div 
-                    className="prose prose-sm max-w-none text-slate-700 dark:text-slate-300 text-[11px] leading-snug"
-                    dangerouslySetInnerHTML={{ __html: tips.replace(/\*\*(.*?)\*\*/g, '<b class="text-indigo-600 dark:text-indigo-400">$1</b>').replace(/\n/g, '<br />') }}
-                  />
-              )}
-              {loading && (
-                <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 text-[10px] font-black animate-pulse">
-                  <span>✨ BUSCANDO DICAS...</span>
-                </div>
+        {(isLoading || error || suggestions) && (
+          <div className="bg-slate-50/70 dark:bg-slate-900/50 border-t border-slate-200 dark:border-slate-700/60 px-5 py-4 animate-fade-in">
+              {isLoading && <Spinner />}
+              {error && <p className="text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30 p-3 rounded-md text-sm">{error}</p>}
+              {suggestions && (
+                  <div className="prose prose-sm max-w-none text-slate-700 dark:text-slate-300 whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: suggestions.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br />') }}>
+                  </div>
               )}
           </div>
         )}

@@ -16,7 +16,7 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
   const storageKey = `ai_v2_${event.id}`;
   const [suggestions, setSuggestions] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [errorText, setErrorText] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem(storageKey);
@@ -25,25 +25,25 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
 
   const handleAiRequest = async () => {
     setIsLoading(true);
-    setErrorText(null);
+    setErrorMessage(null);
 
-    const prompt = `Dê 3 dicas curtas e práticas para "${event.title}" em ${event.location}: transporte, comida e cultura. Em português.`;
+    const prompt = `Como guia expert no Japão, dê 3 dicas práticas para "${event.title}" em ${event.location}: transporte ideal, comida próxima e uma curiosidade cultural. Use português, formato Markdown direto.`;
 
     try {
       const result = await getSuggestions(prompt);
       setSuggestions(result);
       localStorage.setItem(storageKey, result);
     } catch (err: any) {
-      if (err.message === "AUTH_REQUIRED") {
+      if (err.message === "KEY_NOT_CONFIGURED") {
         const aistudio = (window as any).aistudio;
         if (aistudio?.openSelectKey) {
             await aistudio.openSelectKey();
-            setErrorText("IA Conectada! Clique em IA novamente.");
+            setErrorMessage("IA conectada! Tente novamente agora.");
         } else {
-            setErrorText("Use o botão 'Habilitar IA' no topo.");
+            setErrorMessage("IA não configurada no navegador.");
         }
       } else {
-        setErrorText(err.message);
+        setErrorMessage(err.message);
       }
     } finally {
       setIsLoading(false);
@@ -54,6 +54,7 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
 
   return (
     <div className="relative group">
+      {/* Icon Circle */}
       <div className={`absolute -left-[45px] top-0 h-9 w-9 rounded-full bg-white dark:bg-slate-900 flex items-center justify-center ring-4 ring-slate-50 dark:ring-slate-950 z-10 shadow-sm`}>
           <div className={`w-full h-full rounded-full flex items-center justify-center ${colorClass} bg-opacity-10`}>
               <ActivityIcon type={event.type} className={`w-5 h-5 ${colorClass}`} />
@@ -89,11 +90,11 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
           </div>
         </div>
 
-        {(isLoading || errorText || suggestions) && (
+        {(isLoading || errorMessage || suggestions) && (
           <div className="bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 px-4 py-3 animate-fade-in">
-              {errorText && (
+              {errorMessage && (
                 <div className="text-amber-600 dark:text-amber-400 text-[10px] font-bold mb-1">
-                  ⚠️ {errorText}
+                  ⚠️ {errorMessage}
                 </div>
               )}
               {suggestions && (
@@ -103,8 +104,9 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
                   />
               )}
               {isLoading && (
-                <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold animate-pulse">
-                  <span>✨ OBTENDO DICAS...</span>
+                <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold">
+                  <div className="animate-bounce">✨</div>
+                  <span>OBTENDO DICAS EXCLUSIVAS...</span>
                 </div>
               )}
           </div>

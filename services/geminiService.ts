@@ -2,18 +2,17 @@
 import { GoogleGenAI } from "@google/genai";
 
 /**
- * Busca sugestões da IA usando o modelo mais eficiente e gratuito (Gemini 3 Flash).
- * A instância é criada JIT (Just-In-Time) para garantir que use a chave ativa no navegador.
+ * Serviço de IA configurado para ser resiliente e buscar a chave JIT (Just-In-Time).
  */
 export const getSuggestions = async (prompt: string): Promise<string> => {
   const apiKey = process.env.API_KEY;
 
-  // Se não houver chave, informamos a UI para abrir o seletor
   if (!apiKey || apiKey === "undefined" || apiKey.trim() === "") {
-    throw new Error("AUTH_REQUIRED");
+    throw new Error("KEY_NOT_CONFIGURED");
   }
 
   try {
+    // Instanciação obrigatória antes do uso para capturar a chave atualizada
     const ai = new GoogleGenAI({ apiKey });
     
     const response = await ai.models.generateContent({
@@ -21,18 +20,14 @@ export const getSuggestions = async (prompt: string): Promise<string> => {
       contents: prompt,
     });
 
-    const text = response.text;
-    if (!text) throw new Error("A IA não retornou conteúdo.");
-
-    return text;
+    return response.text || "Não foi possível gerar dicas para este local.";
   } catch (error: any) {
-    console.error("Erro no serviço Gemini:", error);
+    console.error("Erro Gemini:", error);
     
-    // Tratamento para chaves inválidas ou expiradas
-    if (error?.message?.includes("API key not found") || error?.status === 404) {
-      throw new Error("AUTH_REQUIRED");
+    if (error?.message?.includes("not found") || error?.message?.includes("API key")) {
+      throw new Error("KEY_NOT_CONFIGURED");
     }
     
-    throw new Error("Erro ao conectar com a IA. Verifique sua conexão.");
+    throw new Error("Ocorreu um erro ao conectar com a IA. Tente novamente.");
   }
 };

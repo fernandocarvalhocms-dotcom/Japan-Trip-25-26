@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useEffect } from 'react';
 import { ItineraryEvent } from '../types';
 import { ActivityIcon, getColorClassName } from './icons';
@@ -10,7 +9,7 @@ interface EventCardProps {
 
 const Spinner: React.FC = () => (
     <div className="flex justify-center items-center">
-        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600"></div>
+        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
     </div>
 );
 
@@ -34,31 +33,29 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
     setIsLoading(true);
     setError(null);
 
-    const prompt = `Como um guia expert em turismo no Japão, forneça 3 dicas rápidas para o evento "${event.title}" em ${event.location}:
-1. Dica de transporte ou acesso.
-2. Sugestão de prato ou restaurante próximo.
-3. Curiosidade cultural ou etiqueta local.
-Responda em Markdown, sem introduções.`;
+    const prompt = `Como um guia expert em turismo no Japão, forneça 3 dicas rápidas para o evento "${event.title}" em ${event.location}. Fale sobre transporte, onde comer perto e uma curiosidade local. Responda em Markdown sem introduções.`;
 
     try {
       const result = await getSuggestions(prompt);
       setSuggestions(result);
       localStorage.setItem(storageKey, result);
     } catch (err: any) {
-      if (err.message === "API_KEY_MISSING") {
+      console.error("Erro capturado no card:", err.message);
+
+      if (err.message === "KEY_NOT_CONFIGURED") {
         const aistudio = (window as any).aistudio;
-        if (aistudio) {
+        if (aistudio && typeof aistudio.openSelectKey === 'function') {
           try {
             await aistudio.openSelectKey();
-            setError("Chave selecionada! Tente novamente.");
+            setError("Chave configurada! Clique em 'IA' novamente.");
           } catch (e) {
             setError("Clique em 'Ativar IA' no topo.");
           }
         } else {
-          setError("Chave de API não configurada.");
+          setError("Chave de API não detectada.");
         }
       } else {
-        setError(err?.message || "Erro na IA.");
+        setError("Erro na IA. Tente novamente.");
       }
     } finally {
       setIsLoading(false);
@@ -69,7 +66,6 @@ Responda em Markdown, sem introduções.`;
 
   return (
     <div className="relative group">
-      {/* Marcador da Timeline */}
       <div className={`absolute -left-[45px] top-0 h-9 w-9 rounded-full bg-white dark:bg-slate-900 flex items-center justify-center ring-4 ring-slate-50 dark:ring-slate-900 z-10 shadow-sm transition-transform group-hover:scale-110`}>
           <div className={`w-full h-full rounded-full flex items-center justify-center ${colorClass} bg-opacity-10 dark:bg-opacity-20`}>
               <ActivityIcon type={event.type} className={`w-5 h-5 ${colorClass}`} />
@@ -84,7 +80,7 @@ Responda em Markdown, sem introduções.`;
             className={`absolute top-4 right-4 z-20 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black transition-all shadow-sm
               ${suggestions 
                 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
-                : 'bg-indigo-600 text-white hover:bg-indigo-700 active:scale-95'
+                : 'bg-red-600 text-white hover:bg-red-700 active:scale-95'
               } disabled:opacity-50`}
           >
             {isLoading ? <Spinner /> : suggestions ? '✨ DICAS' : '✨ IA'}
@@ -115,13 +111,13 @@ Responda em Markdown, sem introduções.`;
               {suggestions && (
                   <div 
                     className="prose prose-sm max-w-none text-slate-700 dark:text-slate-300 text-xs leading-relaxed"
-                    dangerouslySetInnerHTML={{ __html: suggestions.replace(/\*\*(.*?)\*\*/g, '<strong class="text-indigo-600 dark:text-indigo-400">$1</strong>').replace(/\n/g, '<br />') }}
+                    dangerouslySetInnerHTML={{ __html: suggestions.replace(/\*\*(.*?)\*\*/g, '<strong class="text-red-600 dark:text-red-400">$1</strong>').replace(/\n/g, '<br />') }}
                   />
               )}
               {isLoading && (
-                <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold animate-pulse">
+                <div className="flex items-center gap-2 text-red-600 dark:text-red-400 text-[10px] font-bold animate-pulse">
                   <Spinner />
-                  <span>PREPARANDO DICAS JAPONESAS...</span>
+                  <span>CONSULTANDO IA...</span>
                 </div>
               )}
           </div>

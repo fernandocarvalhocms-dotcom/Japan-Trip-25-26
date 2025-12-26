@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { ItineraryView } from './components/ItineraryView';
 import { ChecklistView } from './components/ChecklistView';
@@ -34,30 +33,39 @@ function App() {
     const [theme, toggleTheme] = useTheme();
     const [activeView, setActiveView] = useState<View>('roteiro');
     const [hasApiKey, setHasApiKey] = useState<boolean>(false);
-    const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Monitoramento robusto da Chave de API
+    // Checagem robusta da chave de API
     useEffect(() => {
-        const checkStatus = () => {
-            const key = process.env.API_KEY;
-            const isValid = !!(key && key !== "undefined" && key.length > 5);
-            if (isValid !== hasApiKey) {
-                setHasApiKey(isValid);
+        const checkKey = async () => {
+            // Se process.env.API_KEY já estiver preenchido, temos a chave
+            if (process.env.API_KEY && process.env.API_KEY !== "undefined" && process.env.API_KEY !== "") {
+                setHasApiKey(true);
+                return;
+            }
+
+            // Fallback para verificar via interface nativa aistudio
+            const aistudio = (window as any).aistudio;
+            if (aistudio && typeof aistudio.hasSelectedApiKey === 'function') {
+                try {
+                    const selected = await aistudio.hasSelectedApiKey();
+                    setHasApiKey(selected);
+                } catch (e) {
+                    setHasApiKey(false);
+                }
             }
         };
-        
-        checkStatus();
-        // Polling para mobile: a injeção da chave pode ocorrer a qualquer momento após o diálogo
-        const interval = setInterval(checkStatus, 1000);
-        return () => clearInterval(interval);
-    }, [hasApiKey]);
+
+        checkKey();
+        const timer = setInterval(checkKey, 2000); // Polling para detectar ativação
+        return () => clearInterval(timer);
+    }, []);
 
     const handleOpenKeyDialog = async () => {
         const aistudio = (window as any).aistudio;
         if (aistudio && typeof aistudio.openSelectKey === 'function') {
             try {
                 await aistudio.openSelectKey();
-                // Assumimos sucesso imediatamente conforme diretriz para evitar race conditions
+                // Assumimos sucesso conforme as diretrizes para mitigar race conditions
                 setHasApiKey(true);
             } catch (err) {
                 console.error("Erro ao abrir seletor de chaves:", err);
@@ -66,9 +74,10 @@ function App() {
     };
 
     const handleShare = async () => {
-        const shareData = { title: 'Roteiro Japão 2025-26', url: window.location.href };
         if (navigator.share) {
-            try { await navigator.share(shareData); } catch (e) {}
+            try {
+                await navigator.share({ title: 'Meu Roteiro Japão', url: window.location.href });
+            } catch (e) {}
         }
     };
 
@@ -76,9 +85,7 @@ function App() {
         <button
             onClick={() => setActiveView(view)}
             className={`flex items-center gap-2 px-3 sm:px-4 py-2 text-sm font-semibold rounded-lg transition-all ${
-                activeView === view 
-                ? 'bg-red-600 text-white shadow-md' 
-                : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                activeView === view ? 'bg-red-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
             }`}
         >
             {children}
@@ -87,14 +94,14 @@ function App() {
     );
 
     return (
-        <div className="min-h-screen font-sans text-slate-800 dark:text-slate-300 flex flex-col selection:bg-red-100 selection:text-red-900">
-            <header className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 sticky top-0 z-30 px-4">
+        <div className="min-h-screen font-sans text-slate-800 dark:text-slate-300 flex flex-col">
+            <header className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 sticky top-0 z-30 px-4">
                 <div className="container mx-auto flex justify-between items-center h-16">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center shadow-lg transform -rotate-12">
-                            <span className="text-white font-black text-lg">JP</span>
+                        <div className="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center shadow-lg">
+                            <span className="text-white font-black text-sm">JP</span>
                         </div>
-                        <h1 className="text-lg font-extrabold tracking-tighter hidden md:block">ROTEIRO JAPÃO</h1>
+                        <h1 className="text-lg font-black hidden md:block">ROTEIRO JAPÃO</h1>
                     </div>
 
                     <nav className="flex items-center gap-1 sm:gap-2">
@@ -103,13 +110,10 @@ function App() {
                         <NavButton view="calendario" label="Agenda"><CalendarIcon className="w-5 h-5" /></NavButton>
                         <NavButton view="hoteis" label="Hotéis"><HotelIcon className="w-5 h-5" /></NavButton>
 
-                        <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1 hidden md:block"></div>
-
                         {!hasApiKey && (
                             <button 
                                 onClick={handleOpenKeyDialog}
-                                className="bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-black px-3 py-2 rounded-full shadow-lg animate-pulse uppercase tracking-tighter transition-all"
-                                title="Ative a IA para obter dicas personalizadas"
+                                className="ml-2 bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-black px-3 py-2 rounded-full shadow-lg animate-pulse uppercase tracking-tighter"
                             >
                                 Ativar IA ✨
                             </button>
@@ -129,10 +133,6 @@ function App() {
                 {activeView === 'hoteis' && <HotelsView />}
                 {activeView === 'calendario' && <CalendarView onNavigateToDay={() => setActiveView('roteiro')} />}
             </main>
-            
-            <footer className="md:hidden bg-white/95 dark:bg-slate-900/95 border-t border-slate-200 dark:border-slate-800 p-2 text-[10px] text-center text-slate-400">
-                Japan Trip Itinerary - 2025/26
-            </footer>
         </div>
     );
 }

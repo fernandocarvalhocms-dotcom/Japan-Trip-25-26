@@ -33,31 +33,37 @@ const useTheme = (): [Theme, () => void] => {
 function App() {
     const [theme, toggleTheme] = useTheme();
     const [activeView, setActiveView] = useState<View>('roteiro');
-    const [isAiReady, setIsAiReady] = useState<boolean>(false);
+    const [isAiConfigured, setIsAiConfigured] = useState<boolean>(false);
 
-    // Verifica se a IA já está configurada
+    // Verifica periodicamente se a IA foi habilitada no navegador
     useEffect(() => {
-        const checkAi = async () => {
+        const checkAiStatus = async () => {
             const aistudio = (window as any).aistudio;
             if (aistudio?.hasSelectedApiKey) {
-                const hasKey = await aistudio.hasSelectedApiKey();
-                setIsAiReady(hasKey || !!process.env.API_KEY);
+                const selected = await aistudio.hasSelectedApiKey();
+                // Considera configurado se o sistema disser que tem chave ou se a env estiver populada
+                setIsAiConfigured(selected || (!!process.env.API_KEY && process.env.API_KEY !== "undefined"));
             } else {
-                setIsAiReady(!!process.env.API_KEY);
+                setIsAiConfigured(!!process.env.API_KEY && process.env.API_KEY !== "undefined");
             }
         };
-        checkAi();
-        const interval = setInterval(checkAi, 3000);
+
+        checkAiStatus();
+        const interval = setInterval(checkAiStatus, 2000);
         return () => clearInterval(interval);
     }, []);
 
-    const handleActivateAi = async () => {
+    const handleEnableAi = async () => {
         const aistudio = (window as any).aistudio;
         if (aistudio?.openSelectKey) {
-            await aistudio.openSelectKey();
-            setIsAiReady(true);
+            try {
+                await aistudio.openSelectKey();
+                setIsAiConfigured(true);
+            } catch (e) {
+                console.error("Erro ao abrir seletor:", e);
+            }
         } else {
-            alert("Para usar a IA no celular, acesse através do Google AI Studio.");
+            alert("Este recurso requer o ambiente do Google AI Studio.");
         }
     };
 
@@ -87,17 +93,13 @@ function App() {
                         <NavButton view="mapa" label="Mapa"><MapIcon className="w-5 h-5" /></NavButton>
                         <NavButton view="calendario" label="Agenda"><CalendarIcon className="w-5 h-5" /></NavButton>
 
-                        {!isAiReady ? (
+                        {!isAiConfigured && (
                             <button 
-                                onClick={handleActivateAi}
-                                className="ml-1 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-[10px] font-black px-3 py-2 rounded-full shadow-lg animate-pulse uppercase"
+                                onClick={handleEnableAi}
+                                className="ml-1 bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-black px-3 py-2 rounded-full shadow-lg animate-pulse uppercase tracking-tight"
                             >
-                                Ativar IA ✨
+                                Habilitar IA ✨
                             </button>
-                        ) : (
-                            <div className="ml-1 w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center border border-green-200 dark:border-green-800" title="IA Ativa">
-                                <span className="text-xs">✨</span>
-                            </div>
                         )}
 
                         <button onClick={toggleTheme} className="ml-1 p-2 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800">

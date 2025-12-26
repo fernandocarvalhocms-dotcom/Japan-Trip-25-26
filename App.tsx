@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { ItineraryView } from './components/ItineraryView';
 import { ChecklistView } from './components/ChecklistView';
@@ -9,6 +8,19 @@ import { ItineraryIcon, ChecklistIcon, ShareIcon, SunIcon, MoonIcon, MapIcon, Ho
 
 type View = 'roteiro' | 'checklist' | 'mapa' | 'hoteis' | 'calendario';
 type Theme = 'light' | 'dark';
+
+// Tipagem para os métodos injetados pelo ambiente do AI Studio
+// Fix: Definindo a interface AIStudio explicitamente para resolver conflitos de declaração global e modifiers idênticos.
+interface AIStudio {
+  hasSelectedApiKey(): Promise<boolean>;
+  openSelectKey(): Promise<void>;
+}
+
+declare global {
+  interface Window {
+    aistudio: AIStudio;
+  }
+}
 
 const useTheme = (): [Theme, () => void] => {
     const [theme, setTheme] = useState<Theme>(() => {
@@ -39,7 +51,44 @@ function App() {
     const [theme, toggleTheme] = useTheme();
     const [activeView, setActiveView] = useState<View>('roteiro');
     const [shareStatus, setShareStatus] = useState<'idle' | 'copied'>('idle');
+    const [hasApiKey, setHasApiKey] = useState<boolean>(true);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Verifica o status da chave de API ao carregar o app para habilitar IA
+    useEffect(() => {
+        const checkApiKeyStatus = async () => {
+            // Se já existe no ambiente (desktop), está ok
+            if (process.env.API_KEY) {
+                setHasApiKey(true);
+                return;
+            }
+            
+            // Caso contrário, checa se o usuário já selecionou uma chave no ambiente do AI Studio
+            if (window.aistudio) {
+                try {
+                    const selected = await window.aistudio.hasSelectedApiKey();
+                    setHasApiKey(selected);
+                } catch (e) {
+                    setHasApiKey(false);
+                }
+            } else {
+                setHasApiKey(false);
+            }
+        };
+        checkApiKeyStatus();
+    }, []);
+
+    const handleOpenKeyDialog = async () => {
+        if (window.aistudio) {
+            try {
+                await window.aistudio.openSelectKey();
+                // Assume sucesso para liberar a UI imediatamente (mitigar race conditions)
+                setHasApiKey(true);
+            } catch (err) {
+                console.error("Erro ao abrir seletor de chave:", err);
+            }
+        }
+    };
 
     const copyToClipboard = async () => {
         try {
@@ -186,6 +235,17 @@ function App() {
                             
                              <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1 hidden sm:block"></div>
                              
+                            {/* Botão de Ativação de IA (Aparece apenas se a chave estiver ausente) */}
+                            {!hasApiKey && (
+                                <button 
+                                    onClick={handleOpenKeyDialog}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 text-xs font-bold rounded-full border border-amber-200 dark:border-amber-800 animate-pulse whitespace-nowrap"
+                                >
+                                    <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                                    Ativar IA ✨
+                                </button>
+                            )}
+
                             {/* Data Management Buttons */}
                             <button onClick={handleExportData} className="hidden sm:flex p-2 rounded-md text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800" title="Salvar Dados (Backup)">
                                 <DownloadIcon className="w-5 h-5" />

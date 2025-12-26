@@ -10,9 +10,6 @@ import { ItineraryIcon, ChecklistIcon, ShareIcon, SunIcon, MoonIcon, MapIcon, Ho
 type View = 'roteiro' | 'checklist' | 'mapa' | 'hoteis' | 'calendario';
 type Theme = 'light' | 'dark';
 
-// The local AIStudio interface and window declaration are removed to prevent conflicts 
-// with types already provided in the execution context.
-
 const useTheme = (): [Theme, () => void] => {
     const [theme, setTheme] = useState<Theme>(() => {
         if (typeof window === 'undefined') return 'light';
@@ -40,7 +37,6 @@ const useTheme = (): [Theme, () => void] => {
 
 function App() {
     const [theme, toggleTheme] = useTheme();
-    // Persistir a aba ativa para não voltar ao início no refresh
     const [activeView, setActiveView] = useState<View>(() => {
         const saved = localStorage.getItem('active_tab');
         return (saved as View) || 'roteiro';
@@ -56,13 +52,10 @@ function App() {
 
     useEffect(() => {
         const checkApiKeyStatus = async () => {
-            // First check if API key is already available in the environment
             if (process.env.API_KEY) {
                 setHasApiKey(true);
                 return;
             }
-            
-            // Otherwise, check via AI Studio integration
             const aistudio = (window as any).aistudio;
             if (aistudio) {
                 try {
@@ -83,21 +76,10 @@ function App() {
         if (aistudio) {
             try {
                 await aistudio.openSelectKey();
-                // Assume success after opening dialog to prevent race condition issues as per guidelines
                 setHasApiKey(true);
             } catch (err) {
                 console.error("Erro ao abrir seletor de chave:", err);
             }
-        }
-    };
-
-    const copyToClipboard = async () => {
-        try {
-            await navigator.clipboard.writeText(window.location.href);
-            setShareStatus('copied');
-            setTimeout(() => setShareStatus('idle'), 2000);
-        } catch (err) {
-            console.error('Failed to copy to clipboard:', err);
         }
     };
 
@@ -111,14 +93,18 @@ function App() {
             try {
                 await navigator.share(shareData);
             } catch (err) {
-                console.error("Web Share API error:", err);
-                if (err instanceof Error && err.name === 'AbortError') {
-                } else {
-                    copyToClipboard();
-                }
+                try {
+                    await navigator.clipboard.writeText(window.location.href);
+                    setShareStatus('copied');
+                    setTimeout(() => setShareStatus('idle'), 2000);
+                } catch (cErr) {}
             }
         } else {
-            copyToClipboard();
+            try {
+                await navigator.clipboard.writeText(window.location.href);
+                setShareStatus('copied');
+                setTimeout(() => setShareStatus('idle'), 2000);
+            } catch (cErr) {}
         }
     };
 
@@ -129,19 +115,11 @@ function App() {
             const val = localStorage.getItem(key);
             if (val) dataToExport[key] = JSON.parse(val);
         });
-
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key && key.startsWith('ai_suggestion_')) {
-                dataToExport[key] = localStorage.getItem(key);
-            }
-        }
-
         const blob = new Blob([JSON.stringify(dataToExport, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `japan-trip-data-${new Date().toISOString().split('T')[0]}.json`;
+        a.download = `japao-dados-${new Date().toISOString().split('T')[0]}.json`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -155,23 +133,16 @@ function App() {
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file) return;
-
         const reader = new FileReader();
         reader.onload = (e) => {
             try {
                 const json = JSON.parse(e.target?.result as string);
                 Object.keys(json).forEach(key => {
                     const value = json[key];
-                    if (typeof value === 'object') {
-                        localStorage.setItem(key, JSON.stringify(value));
-                    } else {
-                        localStorage.setItem(key, value);
-                    }
+                    localStorage.setItem(key, typeof value === 'object' ? JSON.stringify(value) : value);
                 });
-                alert('Dados importados com sucesso! A página será recarregada.');
                 window.location.reload();
             } catch (error) {
-                console.error('Erro ao importar JSON:', error);
                 alert('Arquivo inválido.');
             }
         };
@@ -191,81 +162,47 @@ function App() {
     const NavButton: React.FC<{ view: View; label: string; children: React.ReactNode }> = ({ view, label, children }) => (
         <button
             onClick={() => setActiveView(view)}
-            className={`flex items-center gap-2 px-3 sm:px-4 py-2 text-sm font-semibold rounded-md transition-colors ${
-                activeView === view ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+            className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-2.5 sm:px-4 py-2 text-[10px] sm:text-sm font-bold rounded-xl transition-all ${
+                activeView === view ? 'bg-indigo-600 text-white shadow-md scale-105' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
             }`}
         >
             {children}
-            <span className="hidden sm:inline">{label}</span>
+            <span>{label}</span>
         </button>
     );
 
     return (
-        <div className="min-h-screen font-sans text-slate-800 dark:text-slate-300 flex flex-col bg-slate-50 dark:bg-slate-900">
-            <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg border-b border-slate-200 dark:border-slate-700/60 sticky top-0 z-20">
-                <div className="container mx-auto px-4">
-                    <div className="flex justify-between items-center h-16">
-                        <div className="flex items-center gap-2">
-                            <img src="https://em-content.zobj.net/source/apple/354/japanese-castle_1f3ef.png" alt="Japan Castle Icon" className="w-8 h-8" />
-                            <h1 className="text-lg sm:text-xl font-bold text-slate-800 dark:text-slate-200 hidden md:block">Roteiro Japão</h1>
+        <div className="min-h-screen font-sans text-slate-800 dark:text-slate-300 flex flex-col bg-slate-50 dark:bg-slate-950 overflow-hidden">
+            <header className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40">
+                <div className="container mx-auto px-2 sm:px-4">
+                    <div className="flex justify-between items-center h-16 sm:h-20">
+                        <div className="flex items-center gap-2 hidden lg:flex">
+                            <img src="https://em-content.zobj.net/source/apple/354/japanese-castle_1f3ef.png" alt="Icon" className="w-8 h-8" />
+                            <h1 className="text-sm font-black tracking-widest uppercase text-indigo-600 dark:text-indigo-400">Japão 25/26</h1>
                         </div>
-                        <nav className="flex items-center gap-1 overflow-x-auto no-scrollbar">
-                            <NavButton view="roteiro" label="Roteiro">
-                                <ItineraryIcon className="w-5 h-5" />
-                            </NavButton>
-                            <NavButton view="mapa" label="Mapa">
-                                <MapIcon className="w-5 h-5" />
-                            </NavButton Navigator.share>
-                            <NavButton view="calendario" label="Calendário">
-                                <CalendarIcon className="w-5 h-5" />
-                            </NavButton>
-                            <NavButton view="hoteis" label="Hotéis">
-                                <HotelIcon className="w-5 h-5" />
-                            </NavButton>
-                            <NavButton view="checklist" label="Checklist">
-                                <ChecklistIcon className="w-5 h-5" />
-                            </NavButton>
-                            
-                             <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1 hidden sm:block"></div>
-                             
-                            {!hasApiKey && (
-                                <button 
-                                    onClick={handleOpenKeyDialog}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 text-xs font-bold rounded-full border border-amber-200 dark:border-amber-800 animate-pulse whitespace-nowrap"
-                                >
-                                    <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                                    Ativar IA ✨
-                                </button>
-                            )}
+                        
+                        <nav className="flex items-center gap-1 sm:gap-2 flex-1 justify-around sm:justify-end overflow-x-auto no-scrollbar">
+                            <NavButton view="roteiro" label="Roteiro"><ItineraryIcon className="w-5 h-5" /></NavButton>
+                            <NavButton view="mapa" label="Mapa"><MapIcon className="w-5 h-5" /></NavButton>
+                            <NavButton view="calendario" label="Agenda"><CalendarIcon className="w-5 h-5" /></NavButton>
+                            <NavButton view="hoteis" label="Hotéis"><HotelIcon className="w-5 h-5" /></NavButton>
+                            <NavButton view="checklist" label="Checklist"><ChecklistIcon className="w-5 h-5" /></NavButton>
+                        </nav>
 
-                            <button onClick={handleExportData} className="hidden sm:flex p-2 rounded-md text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800" title="Salvar Dados (Backup)">
-                                <DownloadIcon className="w-5 h-5" />
-                            </button>
-                            <button onClick={handleImportClick} className="hidden sm:flex p-2 rounded-md text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800" title="Importar Dados">
-                                <UploadIcon className="w-5 h-5" />
-                            </button>
-                            <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".json" />
-
-                            <button
-                                onClick={handleShare}
-                                className="hidden sm:flex items-center gap-2 px-3 sm:px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors"
-                            >
-                                {shareStatus === 'copied' ? (
-                                    <span className="text-indigo-600 dark:text-indigo-400">Copiado!</span>
-                                ) : (
-                                    <ShareIcon className="w-5 h-5" />
-                                )}
-                            </button>
-                            <button onClick={toggleTheme} className="ml-1 p-2 rounded-md text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800" title="Alternar tema">
+                        <div className="flex items-center gap-1 ml-2 border-l border-slate-200 dark:border-slate-800 pl-2">
+                            <button onClick={toggleTheme} className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800">
                                 {theme === 'light' ? <MoonIcon className="w-5 h-5" /> : <SunIcon className="w-5 h-5" />}
                             </button>
-                        </nav>
+                            <button onClick={handleShare} className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800">
+                                <ShareIcon className="w-5 h-5" />
+                            </button>
+                        </div>
                     </div>
                 </div>
             </header>
             
-            <main className="container mx-auto flex-1">
-                <div className="h-[calc(100vh-4rem)]">
+            <main className="flex-1 overflow-hidden relative">
+                <div className="absolute inset-0 overflow-y-auto no-scrollbar pb-16">
                     {activeView === 'roteiro' && <ItineraryView />}
                     {activeView === 'checklist' && <ChecklistView />}
                     {activeView === 'mapa' && <MapViewWrapper />}
@@ -273,13 +210,17 @@ function App() {
                     {activeView === 'calendario' && <CalendarView onNavigateToDay={handleDayNavigation} />}
                 </div>
             </main>
-            
-            <footer className="fixed bottom-4 right-4 z-50 pointer-events-none">
-                <div className="bg-slate-800/80 dark:bg-slate-700/80 backdrop-blur-sm text-[10px] text-slate-300 px-3 py-1 rounded-full border border-slate-600/50 flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
-                    Dados salvos localmente
-                </div>
-            </footer>
+
+            {/* Rodapé fixo para botões de ação globais no mobile */}
+            <div className="fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 p-2 flex justify-center gap-4 lg:hidden z-40">
+                 <button onClick={handleExportData} className="flex flex-col items-center gap-0.5 text-[9px] font-bold text-slate-500">
+                    <DownloadIcon className="w-5 h-5" /> Backup
+                 </button>
+                 <button onClick={handleImportClick} className="flex flex-col items-center gap-0.5 text-[9px] font-bold text-slate-500">
+                    <UploadIcon className="w-5 h-5" /> Importar
+                 </button>
+                 <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".json" />
+            </div>
         </div>
     );
 }

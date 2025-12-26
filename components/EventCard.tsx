@@ -25,31 +25,30 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
     if (saved) setSuggestions(saved);
   }, [storageKey]);
 
-  const runAiQuery = async () => {
+  const executeAiQuery = async () => {
     setIsLoading(true);
     setError(null);
-    const prompt = `Como um guia expert em turismo no Japão, forneça 3 dicas rápidas para o evento "${event.title}" em ${event.location}: transporte, comida próxima e uma curiosidade cultural. Responda em Markdown direto sem introduções.`;
+    
+    const prompt = `Como um guia expert em turismo no Japão, forneça 3 dicas rápidas para o evento "${event.title}" em ${event.location}: transporte, comida próxima e uma curiosidade cultural curta. Use Markdown sem introduções.`;
 
     try {
       const result = await getSuggestions(prompt);
       setSuggestions(result);
       localStorage.setItem(storageKey, result);
     } catch (err: any) {
-      if (err.message === "API_KEY_REQUIRED" || err.message === "API_KEY_INVALID") {
-        const aistudio = (window as any).aistudio;
-        if (aistudio && typeof aistudio.openSelectKey === 'function') {
-          try {
-            // Se a chave falhar, abrimos o seletor e avisamos o usuário
-            await aistudio.openSelectKey();
-            setError("Chave selecionada! Clique em 'IA' novamente para carregar.");
-          } catch (e) {
-            setError("Erro ao abrir seletor de chaves.");
-          }
-        } else {
-          setError("IA não configurada no navegador.");
+      const aistudio = (window as any).aistudio;
+      
+      if ((err.message === "API_KEY_REQUIRED" || err.message === "API_KEY_INVALID") && aistudio?.openSelectKey) {
+        try {
+          // No celular, chamamos o seletor e avisamos o usuário para tentar novamente
+          // conforme as regras de segurança do navegador que exigem clique direto
+          await aistudio.openSelectKey();
+          setError("Chave ativada! Clique em IA novamente.");
+        } catch (e) {
+          setError("Erro ao abrir seletor de chaves.");
         }
       } else {
-        setError("Erro na conexão com a IA.");
+        setError("IA temporariamente indisponível.");
       }
     } finally {
       setIsLoading(false);
@@ -60,7 +59,7 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
     e.preventDefault();
     e.stopPropagation();
     if (suggestions || isLoading) return;
-    runAiQuery();
+    executeAiQuery();
   };
 
   const colorClass = getColorClassName(event.type);
@@ -118,7 +117,7 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
               {isLoading && (
                 <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold animate-pulse">
                   <Spinner />
-                  <span>CONSULTANDO IA...</span>
+                  <span>PREPARANDO DICAS...</span>
                 </div>
               )}
           </div>

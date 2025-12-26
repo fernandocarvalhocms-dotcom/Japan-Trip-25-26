@@ -33,26 +33,26 @@ const useTheme = (): [Theme, () => void] => {
 function App() {
     const [theme, toggleTheme] = useTheme();
     const [activeView, setActiveView] = useState<View>('roteiro');
-    const [hasApiKey, setHasApiKey] = useState<boolean>(false);
+    const [hasKey, setHasKey] = useState<boolean>(false);
 
-    // Verificação robusta para UI
+    // Verificação periódica da chave para atualizar a UI
     useEffect(() => {
-        const check = async () => {
+        const checkKey = async () => {
             const isKeyPresent = !!(process.env.API_KEY && process.env.API_KEY.length > 5);
             if (isKeyPresent) {
-                setHasApiKey(true);
-            } else {
-                const aistudio = (window as any).aistudio;
-                if (aistudio?.hasSelectedApiKey) {
-                    try {
-                        const selected = await aistudio.hasSelectedApiKey();
-                        setHasApiKey(selected);
-                    } catch (e) {}
-                }
+                setHasKey(true);
+                return;
+            }
+            const aistudio = (window as any).aistudio;
+            if (aistudio?.hasSelectedApiKey) {
+                try {
+                    const selected = await aistudio.hasSelectedApiKey();
+                    setHasKey(selected);
+                } catch (e) {}
             }
         };
-        check();
-        const interval = setInterval(check, 3000);
+        checkKey();
+        const interval = setInterval(checkKey, 2000);
         return () => clearInterval(interval);
     }, []);
 
@@ -61,8 +61,10 @@ function App() {
         if (aistudio?.openSelectKey) {
             try {
                 await aistudio.openSelectKey();
-                setHasApiKey(true);
-            } catch (err) {}
+                setHasKey(true);
+            } catch (err) {
+                console.error("Não foi possível abrir o seletor:", err);
+            }
         }
     };
 
@@ -93,12 +95,12 @@ function App() {
                         <NavButton view="calendario" label="Agenda"><CalendarIcon className="w-5 h-5" /></NavButton>
                         <NavButton view="hoteis" label="Hotéis"><HotelIcon className="w-5 h-5" /></NavButton>
 
-                        {!hasApiKey && (
+                        {!hasKey && (
                             <button 
                                 onClick={handleOpenKeyDialog}
-                                className="ml-2 bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold px-3 py-2 rounded-full shadow-lg animate-pulse uppercase tracking-tighter"
+                                className="ml-2 bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold px-3 py-2 rounded-full shadow-lg animate-pulse uppercase"
                             >
-                                Ativar IA ✨
+                                Habilitar IA ✨
                             </button>
                         )}
 

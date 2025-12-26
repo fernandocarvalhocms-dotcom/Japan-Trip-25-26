@@ -47,18 +47,20 @@ Use Markdown direto e sem introduções.`;
     } catch (err: any) {
       console.error("Erro no EventCard:", err.message);
       
+      // Se a chave estiver ausente, tentamos disparar o seletor nativo
       if (err.message === "MISSING_API_KEY") {
         const aistudio = (window as any).aistudio;
-        if (aistudio) {
-          setError("Chave necessária. Clique em 'Ativar' no topo ou tente novamente.");
+        if (aistudio && typeof aistudio.openSelectKey === 'function') {
+          setError("Chave necessária. Abrindo seletor...");
           try {
             await aistudio.openSelectKey();
-            setError("Chave selecionada! Tente 'Melhorar' agora.");
+            // Após disparar, as diretrizes dizem para assumir sucesso e pedir novo clique
+            setError("Chave configurada! Clique em 'Melhorar' novamente.");
           } catch (selectErr) {
-            setError("Erro ao abrir seletor de chaves.");
+            setError("Erro ao abrir seletor. Use o botão no topo.");
           }
         } else {
-          setError("Chave de API não configurada. Use o botão no topo.");
+          setError("Chave de API não detectada. Por favor, use o botão no topo da página.");
         }
       } else {
         setError(err?.message || 'Erro ao conectar com a IA.');
@@ -108,7 +110,7 @@ Use Markdown direto e sem introduções.`;
         </div>
 
         {(isLoading || error || suggestions) && (
-          <div className="bg-indigo-50/30 dark:bg-slate-900/60 border-t border-slate-100 dark:border-slate-700/50 px-4 py-3">
+          <div className="bg-indigo-50/30 dark:bg-slate-900/60 border-t border-slate-100 dark:border-slate-700/50 px-4 py-3 animate-fade-in">
               {error && (
                 <div className="flex items-center gap-2 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-2 rounded text-xs font-semibold">
                   <span>⚠️ {error}</span>

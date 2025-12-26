@@ -7,16 +7,17 @@ import { GoogleGenAI } from '@google/genai';
  * a chave de API mais recente disponível no ambiente (process.env.API_KEY).
  */
 export const getSuggestions = async (prompt: string): Promise<string> => {
-  // Verificação rigorosa da chave antes de tocar na SDK
-  const apiKey = process.env.API_KEY;
+  // Acesso direto ao process.env.API_KEY como solicitado nas diretrizes.
+  // Em alguns navegadores mobile, process.env pode não estar definido globalmente,
+  // então usamos uma verificação segura.
+  const apiKey = (typeof process !== 'undefined' && process.env) ? process.env.API_KEY : undefined;
   
-  if (!apiKey || typeof apiKey !== 'string' || apiKey.trim() === "" || apiKey === "undefined") {
-    // Lançamos um erro customizado que o componente sabe tratar
+  if (!apiKey || apiKey === "undefined" || apiKey === "") {
     throw new Error("MISSING_API_KEY");
   }
 
   try {
-    // Só instanciamos se a chave for válida
+    // Nova instância a cada chamada para capturar mudanças na chave (conforme regras)
     const ai = new GoogleGenAI({ apiKey });
     
     const response = await ai.models.generateContent({
@@ -24,21 +25,21 @@ export const getSuggestions = async (prompt: string): Promise<string> => {
       contents: prompt,
     });
 
-    // .text é um getter na resposta
+    // .text é um getter, não um método. Não use response.text()
     const text = response.text;
     if (!text) {
-      throw new Error("A IA retornou uma resposta vazia.");
+      throw new Error("A IA não retornou conteúdo de texto.");
     }
 
     return text;
   } catch (error: any) {
     console.error("Erro na API Gemini:", error);
 
-    // Se o erro for de autenticação ou modelo não encontrado
+    // Se o erro indicar que a chave é inválida ou o modelo não existe
     if (error?.message?.includes("API key") || error?.message?.includes("not found") || error?.message?.includes("404")) {
       throw new Error("MISSING_API_KEY");
     }
 
-    throw new Error(error instanceof Error ? error.message : "Erro na conexão com a IA.");
+    throw new Error(error instanceof Error ? error.message : "Erro desconhecido na IA.");
   }
 };

@@ -39,12 +39,14 @@ function App() {
 
     useEffect(() => {
         const checkStatus = async () => {
-            const key = process.env.API_KEY;
+            // Verifica se a chave está presente no ambiente process.env
+            const key = (typeof process !== 'undefined' && process.env) ? process.env.API_KEY : undefined;
             if (key && key !== "" && key !== "undefined") {
                 setHasApiKey(true);
                 return;
             }
 
+            // Fallback para verificar via interface aistudio injetada
             const aistudio = (window as any).aistudio;
             if (aistudio && typeof aistudio.hasSelectedApiKey === 'function') {
                 try {
@@ -55,8 +57,10 @@ function App() {
                 }
             }
         };
+        
         checkStatus();
-        const interval = setInterval(checkStatus, 2000);
+        // Polling para o mobile, onde a injeção da chave pode ser assíncrona após o diálogo
+        const interval = setInterval(checkStatus, 1500);
         return () => clearInterval(interval);
     }, []);
 
@@ -65,10 +69,14 @@ function App() {
         if (aistudio && typeof aistudio.openSelectKey === 'function') {
             try {
                 await aistudio.openSelectKey();
+                // As diretrizes recomendam assumir sucesso e prosseguir para mitigar race conditions
                 setHasApiKey(true);
             } catch (err) {
-                console.error("Erro ao abrir seletor:", err);
+                console.error("Erro ao abrir seletor de chaves:", err);
             }
+        } else {
+          // Se não houver aistudio, talvez estejamos em um browser comum
+          console.warn("Seletor de chaves não disponível no ambiente atual.");
         }
     };
 
@@ -89,7 +97,7 @@ function App() {
         <button
             onClick={() => setActiveView(view)}
             className={`flex items-center gap-2 px-3 sm:px-4 py-2 text-sm font-semibold rounded-md transition-colors ${
-                activeView === view ? 'bg-indigo-600 text-white' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                activeView === view ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
             }`}
         >
             {children}
@@ -115,9 +123,9 @@ function App() {
                             {!hasApiKey && (
                                 <button 
                                     onClick={handleOpenKeyDialog}
-                                    className="ml-2 px-3 py-1.5 bg-amber-500 text-white text-[10px] font-black rounded-full shadow animate-pulse whitespace-nowrap uppercase tracking-tighter"
+                                    className="ml-2 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-black rounded-full shadow-lg animate-pulse whitespace-nowrap uppercase tracking-tighter transition-all"
                                 >
-                                    Ativar IA ✨
+                                    Configurar IA ✨
                                 </button>
                             )}
 

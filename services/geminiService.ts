@@ -1,11 +1,6 @@
+
 import { GoogleGenAI } from "@google/genai";
 
-/**
- * Obtém sugestões da IA do Google Gemini.
- * Seguindo estritamente as diretrizes:
- * 1. Instancia o GoogleGenAI apenas no momento da execução.
- * 2. Utiliza process.env.API_KEY diretamente.
- */
 export const getSuggestions = async (prompt: string): Promise<string> => {
   const apiKey = process.env.API_KEY;
 
@@ -13,7 +8,7 @@ export const getSuggestions = async (prompt: string): Promise<string> => {
     throw new Error("KEY_NOT_CONFIGURED");
   }
 
-  // Cria a instância aqui para garantir que use a chave atualizada do ambiente
+  // Instanciação no momento da chamada para garantir funcionamento com a chave injetada
   const ai = new GoogleGenAI({ apiKey });
 
   try {
@@ -24,18 +19,14 @@ export const getSuggestions = async (prompt: string): Promise<string> => {
 
     const text = response.text;
     if (!text) {
-      throw new Error("A IA não retornou conteúdo.");
+      throw new Error("A IA retornou uma resposta sem texto.");
     }
 
     return text;
   } catch (error: any) {
-    console.error("Erro na API Gemini:", error);
-    
-    // Tratamento de erro conforme diretrizes (Resetar e pedir nova chave se necessário)
     if (error?.message?.includes("not found") || error?.message?.includes("API key")) {
       throw new Error("KEY_NOT_CONFIGURED");
     }
-    
     throw error;
   }
 };

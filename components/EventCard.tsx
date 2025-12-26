@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useEffect } from 'react';
 import { ItineraryEvent } from '../types';
 import { ActivityIcon, getColorClassName } from './icons';
@@ -9,7 +10,7 @@ interface EventCardProps {
 
 const Spinner: React.FC = () => (
     <div className="flex justify-center items-center">
-        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
+        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600"></div>
     </div>
 );
 
@@ -33,23 +34,21 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
     setIsLoading(true);
     setError(null);
 
-    const prompt = `Como um guia expert em turismo no Japão, forneça 3 dicas rápidas para o evento "${event.title}" em ${event.location}. Fale sobre transporte, onde comer perto e uma curiosidade local. Responda em Markdown sem introduções.`;
+    const prompt = `Como um guia expert em turismo no Japão, forneça 3 dicas rápidas para o evento "${event.title}" em ${event.location}: transporte, comida próxima e curiosidade. Use Markdown direto.`;
 
     try {
       const result = await getSuggestions(prompt);
       setSuggestions(result);
       localStorage.setItem(storageKey, result);
     } catch (err: any) {
-      console.error("Erro capturado no card:", err.message);
-
       if (err.message === "KEY_NOT_CONFIGURED") {
         const aistudio = (window as any).aistudio;
         if (aistudio && typeof aistudio.openSelectKey === 'function') {
           try {
             await aistudio.openSelectKey();
-            setError("Chave configurada! Clique em 'IA' novamente.");
+            setError("Chave configurada! Tente novamente.");
           } catch (e) {
-            setError("Clique em 'Ativar IA' no topo.");
+            setError("Ative a IA no topo.");
           }
         } else {
           setError("Chave de API não detectada.");
@@ -72,29 +71,29 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
           </div>
       </div>
 
-      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200/60 dark:border-slate-700/60 overflow-hidden hover:shadow-md hover:border-red-200 dark:hover:border-red-900/50 transition-all duration-300">
+      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200/60 dark:border-slate-700/60 overflow-hidden hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-900/50 transition-all duration-300">
         <div className="p-4 relative">
           <button
             onClick={handleEnhanceClick}
             disabled={isLoading || !!suggestions}
-            className={`absolute top-4 right-4 z-20 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black transition-all shadow-sm
+            className={`absolute top-4 right-4 z-20 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold transition-all shadow-sm
               ${suggestions 
                 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
-                : 'bg-red-600 text-white hover:bg-red-700 active:scale-95'
+                : 'bg-indigo-600 text-white hover:bg-indigo-700 active:scale-95'
               } disabled:opacity-50`}
           >
             {isLoading ? <Spinner /> : suggestions ? '✨ DICAS' : '✨ IA'}
           </button>
 
           <div className="pr-16">
-            <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">{event.time}</span>
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{event.time}</span>
             <h4 className="font-bold text-slate-800 dark:text-slate-200 text-base mt-1 leading-tight">{event.title}</h4>
           </div>
           
           <p className="text-slate-600 dark:text-slate-400 mt-2 text-xs leading-relaxed">{event.description}</p>
           
           <div className="flex items-center gap-1 mt-3 text-[10px] text-slate-400 font-bold uppercase tracking-tighter">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-indigo-500" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
             </svg>
             {event.location}
@@ -111,11 +110,11 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
               {suggestions && (
                   <div 
                     className="prose prose-sm max-w-none text-slate-700 dark:text-slate-300 text-xs leading-relaxed"
-                    dangerouslySetInnerHTML={{ __html: suggestions.replace(/\*\*(.*?)\*\*/g, '<strong class="text-red-600 dark:text-red-400">$1</strong>').replace(/\n/g, '<br />') }}
+                    dangerouslySetInnerHTML={{ __html: suggestions.replace(/\*\*(.*?)\*\*/g, '<strong class="text-indigo-600 dark:text-indigo-400">$1</strong>').replace(/\n/g, '<br />') }}
                   />
               )}
               {isLoading && (
-                <div className="flex items-center gap-2 text-red-600 dark:text-red-400 text-[10px] font-bold animate-pulse">
+                <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold animate-pulse">
                   <Spinner />
                   <span>CONSULTANDO IA...</span>
                 </div>

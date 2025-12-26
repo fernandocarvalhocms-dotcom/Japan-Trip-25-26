@@ -2,42 +2,38 @@
 import { GoogleGenAI } from "@google/genai";
 
 /**
- * Função principal para obter dicas da IA.
- * Não armazena a instância da IA para garantir que sempre use a chave mais recente.
+ * Obtém sugestões da IA. 
+ * Importante: A instância deve ser criada JIT (Just-In-Time) para capturar a chave ativa.
  */
 export const getSuggestions = async (prompt: string): Promise<string> => {
-  // A chave é injetada pelo ambiente após a seleção no diálogo
   const apiKey = process.env.API_KEY;
 
-  if (!apiKey || apiKey === "undefined") {
+  // Verifica se a chave existe e é válida
+  if (!apiKey || apiKey === "undefined" || apiKey.trim() === "") {
     throw new Error("AUTH_REQUIRED");
   }
 
   try {
-    // Criamos a instância aqui, exatamente antes de usar
-    const genAI = new GoogleGenAI({ apiKey });
+    // Sempre cria uma nova instância para garantir o uso da chave atualizada
+    const ai = new GoogleGenAI({ apiKey });
     
-    const response = await genAI.models.generateContent({
+    const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: prompt,
     });
 
     const text = response.text;
-    if (!text) throw new Error("Resposta vazia");
+    if (!text) throw new Error("A IA não retornou um texto válido.");
 
     return text;
   } catch (error: any) {
-    console.error("Erro na chamada Gemini:", error);
+    console.error("Erro no Gemini Service:", error);
     
-    // Se a chave for inválida ou o projeto não existir, pedimos nova autenticação
-    if (
-      error?.message?.includes("not found") || 
-      error?.message?.includes("API key") ||
-      error?.message?.includes("404")
-    ) {
+    // Erros de autenticação ou cota
+    if (error?.status === 403 || error?.status === 401 || error?.message?.includes("API key")) {
       throw new Error("AUTH_REQUIRED");
     }
     
-    throw new Error("Erro de conexão. Tente novamente em instantes.");
+    throw new Error("Erro de conexão. Tente novamente.");
   }
 };

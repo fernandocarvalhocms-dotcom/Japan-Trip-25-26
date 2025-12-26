@@ -9,7 +9,7 @@ interface EventCardProps {
 }
 
 export const EventCard: React.FC<EventCardProps> = ({ event }) => {
-  const storageKey = `jap_ai_v3_${event.id}`;
+  const storageKey = `jap_tips_v4_${event.id}`;
   const [tips, setTips] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -20,10 +20,12 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
   }, [storageKey]);
 
   const handleAskAi = async () => {
+    if (loading || tips) return;
+    
     setLoading(true);
     setError(null);
 
-    const prompt = `Dê 3 dicas curtas (transporte, comida e curiosidade) para o evento "${event.title}" em ${event.location}. Use Markdown simples, em português.`;
+    const prompt = `Dê 3 dicas curtas e essenciais para "${event.title}" em ${event.location}: transporte prático, o que comer perto e uma curiosidade cultural rápida. Use Markdown simples, em português.`;
 
     try {
       const result = await getSuggestions(prompt);
@@ -34,12 +36,12 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
         const aistudio = (window as any).aistudio;
         if (aistudio?.openSelectKey) {
             await aistudio.openSelectKey();
-            setError("Chave configurada. Tente novamente!");
+            setError("Chave ativada! Clique no botão de novo.");
         } else {
-            setError("Ative a IA no topo da página.");
+            setError("Por favor, ative a IA no ícone ✨ do topo.");
         }
       } else {
-        setError(err.message);
+        setError("Erro temporário. Tente novamente.");
       }
     } finally {
       setLoading(false);
@@ -50,22 +52,22 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
 
   return (
     <div className="relative group">
-      <div className={`absolute -left-[45px] top-0 h-9 w-9 rounded-full bg-white dark:bg-slate-900 flex items-center justify-center ring-4 ring-slate-50 dark:ring-slate-950 z-10 shadow-sm transition-transform active:scale-110`}>
+      <div className={`absolute -left-[45px] top-0 h-9 w-9 rounded-full bg-white dark:bg-slate-900 flex items-center justify-center ring-4 ring-slate-50 dark:ring-slate-950 z-10 shadow-sm`}>
           <div className={`w-full h-full rounded-full flex items-center justify-center ${colorClass} bg-opacity-10`}>
               <ActivityIcon type={event.type} className={`w-5 h-5 ${colorClass}`} />
           </div>
       </div>
 
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden active:border-indigo-500/50 transition-all duration-300">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden active:ring-2 active:ring-indigo-500/20 transition-all duration-300">
         <div className="p-4 relative">
           <button
             onClick={handleAskAi}
             disabled={loading || !!tips}
             className={`absolute top-4 right-4 z-20 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black transition-all shadow-sm
               ${tips 
-                ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400' 
-                : 'bg-indigo-600 text-white active:scale-90'
-              } disabled:opacity-70`}
+                ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400 border border-green-200 dark:border-green-800' 
+                : 'bg-indigo-600 text-white hover:bg-indigo-700 active:scale-90'
+              } disabled:opacity-80`}
           >
             {loading ? '...' : tips ? 'DICAS ✨' : 'IA ✨'}
           </button>
@@ -86,7 +88,7 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
         </div>
 
         {(loading || error || tips) && (
-          <div className="bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 px-4 py-3">
+          <div className="bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 px-4 py-3 animate-fade-in">
               {error && (
                 <div className="text-amber-600 dark:text-amber-400 text-[10px] font-bold">
                   ⚠️ {error}
@@ -100,7 +102,7 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
               )}
               {loading && (
                 <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 text-[10px] font-black animate-pulse">
-                  <span>✨ OBTENDO DICAS...</span>
+                  <span>✨ BUSCANDO DICAS...</span>
                 </div>
               )}
           </div>

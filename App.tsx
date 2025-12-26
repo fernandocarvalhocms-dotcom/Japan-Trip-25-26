@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { ItineraryView } from './components/ItineraryView';
 import { ChecklistView } from './components/ChecklistView';
@@ -8,19 +9,6 @@ import { ItineraryIcon, ChecklistIcon, ShareIcon, SunIcon, MoonIcon, MapIcon, Ho
 
 type View = 'roteiro' | 'checklist' | 'mapa' | 'hoteis' | 'calendario';
 type Theme = 'light' | 'dark';
-
-// Tipagem para os métodos injetados pelo ambiente do AI Studio
-// Fix: Definindo a interface AIStudio explicitamente para resolver conflitos de declaração global e modifiers idênticos.
-interface AIStudio {
-  hasSelectedApiKey(): Promise<boolean>;
-  openSelectKey(): Promise<void>;
-}
-
-declare global {
-  interface Window {
-    aistudio: AIStudio;
-  }
-}
 
 const useTheme = (): [Theme, () => void] => {
     const [theme, setTheme] = useState<Theme>(() => {
@@ -64,9 +52,11 @@ function App() {
             }
             
             // Caso contrário, checa se o usuário já selecionou uma chave no ambiente do AI Studio
-            if (window.aistudio) {
+            // Use casting to any to avoid "identical modifiers" errors in environment-specific global Window augmentation
+            const aistudio = (window as any).aistudio;
+            if (aistudio) {
                 try {
-                    const selected = await window.aistudio.hasSelectedApiKey();
+                    const selected = await aistudio.hasSelectedApiKey();
                     setHasApiKey(selected);
                 } catch (e) {
                     setHasApiKey(false);
@@ -79,9 +69,10 @@ function App() {
     }, []);
 
     const handleOpenKeyDialog = async () => {
-        if (window.aistudio) {
+        const aistudio = (window as any).aistudio;
+        if (aistudio) {
             try {
-                await window.aistudio.openSelectKey();
+                await aistudio.openSelectKey();
                 // Assume sucesso para liberar a UI imediatamente (mitigar race conditions)
                 setHasApiKey(true);
             } catch (err) {

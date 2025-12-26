@@ -8,45 +8,41 @@ interface EventCardProps {
   event: ItineraryEvent;
 }
 
-const Spinner: React.FC = () => (
-    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
-);
-
 export const EventCard: React.FC<EventCardProps> = ({ event }) => {
-  const storageKey = `ai_v2_${event.id}`;
-  const [suggestions, setSuggestions] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const storageKey = `jap_ai_v3_${event.id}`;
+  const [tips, setTips] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem(storageKey);
-    if (saved) setSuggestions(saved);
+    if (saved) setTips(saved);
   }, [storageKey]);
 
-  const handleAiRequest = async () => {
-    setIsLoading(true);
-    setErrorMessage(null);
+  const handleAskAi = async () => {
+    setLoading(true);
+    setError(null);
 
-    const prompt = `Como guia expert no Japão, dê 3 dicas práticas para "${event.title}" em ${event.location}: transporte ideal, comida próxima e uma curiosidade cultural. Use português, formato Markdown direto.`;
+    const prompt = `Dê 3 dicas curtas (transporte, comida e curiosidade) para o evento "${event.title}" em ${event.location}. Use Markdown simples, em português.`;
 
     try {
       const result = await getSuggestions(prompt);
-      setSuggestions(result);
+      setTips(result);
       localStorage.setItem(storageKey, result);
     } catch (err: any) {
-      if (err.message === "KEY_NOT_CONFIGURED") {
+      if (err.message === "AUTH_REQUIRED") {
         const aistudio = (window as any).aistudio;
         if (aistudio?.openSelectKey) {
             await aistudio.openSelectKey();
-            setErrorMessage("IA conectada! Tente novamente agora.");
+            setError("Chave configurada. Tente novamente!");
         } else {
-            setErrorMessage("IA não configurada no navegador.");
+            setError("Ative a IA no topo da página.");
         }
       } else {
-        setErrorMessage(err.message);
+        setError(err.message);
       }
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
@@ -54,25 +50,24 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
 
   return (
     <div className="relative group">
-      {/* Icon Circle */}
-      <div className={`absolute -left-[45px] top-0 h-9 w-9 rounded-full bg-white dark:bg-slate-900 flex items-center justify-center ring-4 ring-slate-50 dark:ring-slate-950 z-10 shadow-sm`}>
+      <div className={`absolute -left-[45px] top-0 h-9 w-9 rounded-full bg-white dark:bg-slate-900 flex items-center justify-center ring-4 ring-slate-50 dark:ring-slate-950 z-10 shadow-sm transition-transform active:scale-110`}>
           <div className={`w-full h-full rounded-full flex items-center justify-center ${colorClass} bg-opacity-10`}>
               <ActivityIcon type={event.type} className={`w-5 h-5 ${colorClass}`} />
           </div>
       </div>
 
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden hover:border-indigo-500/50 transition-all duration-300">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden active:border-indigo-500/50 transition-all duration-300">
         <div className="p-4 relative">
           <button
-            onClick={handleAiRequest}
-            disabled={isLoading || !!suggestions}
+            onClick={handleAskAi}
+            disabled={loading || !!tips}
             className={`absolute top-4 right-4 z-20 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black transition-all shadow-sm
-              ${suggestions 
-                ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400 border border-green-200 dark:border-green-800' 
-                : 'bg-indigo-600 text-white hover:bg-indigo-700 active:scale-95'
-              } disabled:opacity-50`}
+              ${tips 
+                ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400' 
+                : 'bg-indigo-600 text-white active:scale-90'
+              } disabled:opacity-70`}
           >
-            {isLoading ? <Spinner /> : suggestions ? 'DICAS ✨' : 'IA ✨'}
+            {loading ? '...' : tips ? 'DICAS ✨' : 'IA ✨'}
           </button>
 
           <div className="pr-16">
@@ -90,23 +85,22 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
           </div>
         </div>
 
-        {(isLoading || errorMessage || suggestions) && (
-          <div className="bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 px-4 py-3 animate-fade-in">
-              {errorMessage && (
-                <div className="text-amber-600 dark:text-amber-400 text-[10px] font-bold mb-1">
-                  ⚠️ {errorMessage}
+        {(loading || error || tips) && (
+          <div className="bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 px-4 py-3">
+              {error && (
+                <div className="text-amber-600 dark:text-amber-400 text-[10px] font-bold">
+                  ⚠️ {error}
                 </div>
               )}
-              {suggestions && (
+              {tips && (
                   <div 
                     className="prose prose-sm max-w-none text-slate-700 dark:text-slate-300 text-[11px] leading-snug"
-                    dangerouslySetInnerHTML={{ __html: suggestions.replace(/\*\*(.*?)\*\*/g, '<b class="text-indigo-600 dark:text-indigo-400">$1</b>').replace(/\n/g, '<br />') }}
+                    dangerouslySetInnerHTML={{ __html: tips.replace(/\*\*(.*?)\*\*/g, '<b class="text-indigo-600 dark:text-indigo-400">$1</b>').replace(/\n/g, '<br />') }}
                   />
               )}
-              {isLoading && (
-                <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold">
-                  <div className="animate-bounce">✨</div>
-                  <span>OBTENDO DICAS EXCLUSIVAS...</span>
+              {loading && (
+                <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 text-[10px] font-black animate-pulse">
+                  <span>✨ OBTENDO DICAS...</span>
                 </div>
               )}
           </div>

@@ -33,31 +33,30 @@ const useTheme = (): [Theme, () => void] => {
 function App() {
     const [theme, toggleTheme] = useTheme();
     const [activeView, setActiveView] = useState<View>('roteiro');
-    const [isAiReady, setIsAiReady] = useState<boolean>(false);
+    const [isAiActive, setIsAiActive] = useState<boolean>(false);
 
-    // Verifica se a IA já está configurada
     useEffect(() => {
-        const checkAi = async () => {
+        const checkStatus = async () => {
             const aistudio = (window as any).aistudio;
-            if (aistudio?.hasSelectedApiKey) {
+            if (aistudio && typeof aistudio.hasSelectedApiKey === 'function') {
                 const hasKey = await aistudio.hasSelectedApiKey();
-                setIsAiReady(hasKey || !!process.env.API_KEY);
-            } else {
-                setIsAiReady(!!process.env.API_KEY);
+                setIsAiActive(hasKey);
             }
         };
-        checkAi();
-        const interval = setInterval(checkAi, 3000);
+        checkStatus();
+        // Checagem rápida para atualizar a UI assim que o usuário seleciona a chave
+        const interval = setInterval(checkStatus, 2000);
         return () => clearInterval(interval);
     }, []);
 
-    const handleActivateAi = async () => {
+    const handleSetupAi = async () => {
         const aistudio = (window as any).aistudio;
-        if (aistudio?.openSelectKey) {
+        if (aistudio && typeof aistudio.openSelectKey === 'function') {
             await aistudio.openSelectKey();
-            setIsAiReady(true);
+            // Após abrir, assumimos sucesso para liberar a UI
+            setIsAiActive(true);
         } else {
-            alert("Para usar a IA no celular, acesse através do Google AI Studio.");
+            alert("Acesse pelo navegador Google para usar a IA.");
         }
     };
 
@@ -79,7 +78,7 @@ function App() {
                 <div className="container mx-auto flex justify-between items-center h-16">
                     <div className="flex items-center gap-2">
                         <img src="https://em-content.zobj.net/source/apple/354/japanese-castle_1f3ef.png" alt="Icon" className="w-7 h-7" />
-                        <h1 className="text-sm font-black tracking-tighter hidden sm:block">JAPÃO 25/26</h1>
+                        <h1 className="text-xs font-black tracking-tighter uppercase hidden sm:block">Japão 25/26</h1>
                     </div>
 
                     <nav className="flex items-center gap-1 sm:gap-2">
@@ -87,20 +86,20 @@ function App() {
                         <NavButton view="mapa" label="Mapa"><MapIcon className="w-5 h-5" /></NavButton>
                         <NavButton view="calendario" label="Agenda"><CalendarIcon className="w-5 h-5" /></NavButton>
 
-                        {!isAiReady ? (
+                        {!isAiActive ? (
                             <button 
-                                onClick={handleActivateAi}
-                                className="ml-1 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-[10px] font-black px-3 py-2 rounded-full shadow-lg animate-pulse uppercase"
+                                onClick={handleSetupAi}
+                                className="ml-1 bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-[10px] font-black px-3 py-2 rounded-full shadow-lg animate-pulse uppercase"
                             >
                                 Ativar IA ✨
                             </button>
                         ) : (
-                            <div className="ml-1 w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center border border-green-200 dark:border-green-800" title="IA Ativa">
-                                <span className="text-xs">✨</span>
+                            <div className="ml-1 w-8 h-8 rounded-full bg-green-500/10 border border-green-500/20 flex items-center justify-center" title="IA Pronta">
+                                <span className="text-[10px]">✨</span>
                             </div>
                         )}
 
-                        <button onClick={toggleTheme} className="ml-1 p-2 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800">
+                        <button onClick={toggleTheme} className="ml-1 p-2 rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
                             {theme === 'light' ? <MoonIcon className="w-5 h-5" /> : <SunIcon className="w-5 h-5" />}
                         </button>
                     </nav>

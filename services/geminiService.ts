@@ -2,19 +2,17 @@
 import { GoogleGenAI } from "@google/genai";
 
 /**
- * Serviço de IA otimizado para funcionamento mobile e JIT (Just-In-Time).
+ * Serviço de IA configurado para ser resiliente e buscar a chave JIT (Just-In-Time).
  */
 export const getSuggestions = async (prompt: string): Promise<string> => {
-  // Acesso direto à variável injetada pelo ambiente
   const apiKey = process.env.API_KEY;
 
-  // Se não houver chave, lançamos um erro que a UI usará para abrir o seletor
   if (!apiKey || apiKey === "undefined" || apiKey.trim() === "") {
-    throw new Error("API_KEY_REQUIRED");
+    throw new Error("KEY_NOT_CONFIGURED");
   }
 
   try {
-    // Instanciação obrigatória logo antes do uso conforme diretrizes
+    // Instanciação obrigatória antes do uso para capturar a chave atualizada
     const ai = new GoogleGenAI({ apiKey });
     
     const response = await ai.models.generateContent({
@@ -22,22 +20,14 @@ export const getSuggestions = async (prompt: string): Promise<string> => {
       contents: prompt,
     });
 
-    const text = response.text;
-    if (!text) throw new Error("A IA não retornou texto.");
-
-    return text;
+    return response.text || "Não foi possível gerar dicas para este local.";
   } catch (error: any) {
-    console.error("Erro na chamada Gemini:", error);
+    console.error("Erro Gemini:", error);
     
-    // Tratamento de erro para chaves inválidas ou projetos sem faturamento
-    if (
-      error?.message?.includes("not found") || 
-      error?.message?.includes("API key") || 
-      error?.status === 404
-    ) {
-      throw new Error("API_KEY_INVALID");
+    if (error?.message?.includes("not found") || error?.message?.includes("API key")) {
+      throw new Error("KEY_NOT_CONFIGURED");
     }
     
-    throw error;
+    throw new Error("Ocorreu um erro ao conectar com a IA. Tente novamente.");
   }
 };

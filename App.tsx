@@ -33,78 +33,74 @@ const useTheme = (): [Theme, () => void] => {
 function App() {
     const [theme, toggleTheme] = useTheme();
     const [activeView, setActiveView] = useState<View>('roteiro');
-    const [hasKey, setHasKey] = useState<boolean>(false);
+    const [isAiReady, setIsAiReady] = useState<boolean>(false);
 
-    // Verificação periódica da chave para atualizar a UI
+    // Verifica se a IA já está configurada
     useEffect(() => {
-        const checkKey = async () => {
-            const isKeyPresent = !!(process.env.API_KEY && process.env.API_KEY.length > 5);
-            if (isKeyPresent) {
-                setHasKey(true);
-                return;
-            }
+        const checkAi = async () => {
             const aistudio = (window as any).aistudio;
             if (aistudio?.hasSelectedApiKey) {
-                try {
-                    const selected = await aistudio.hasSelectedApiKey();
-                    setHasKey(selected);
-                } catch (e) {}
+                const hasKey = await aistudio.hasSelectedApiKey();
+                setIsAiReady(hasKey || !!process.env.API_KEY);
+            } else {
+                setIsAiReady(!!process.env.API_KEY);
             }
         };
-        checkKey();
-        const interval = setInterval(checkKey, 2000);
+        checkAi();
+        const interval = setInterval(checkAi, 3000);
         return () => clearInterval(interval);
     }, []);
 
-    const handleOpenKeyDialog = async () => {
+    const handleActivateAi = async () => {
         const aistudio = (window as any).aistudio;
         if (aistudio?.openSelectKey) {
-            try {
-                await aistudio.openSelectKey();
-                setHasKey(true);
-            } catch (err) {
-                console.error("Não foi possível abrir o seletor:", err);
-            }
+            await aistudio.openSelectKey();
+            setIsAiReady(true);
+        } else {
+            alert("Para usar a IA no celular, acesse através do Google AI Studio.");
         }
     };
 
     const NavButton: React.FC<{ view: View; label: string; children: React.ReactNode }> = ({ view, label, children }) => (
         <button
             onClick={() => setActiveView(view)}
-            className={`flex items-center gap-2 px-3 sm:px-4 py-2 text-sm font-semibold rounded-lg transition-all ${
-                activeView === view ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+            className={`flex items-center gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all ${
+                activeView === view ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
             }`}
         >
             {children}
-            <span className="hidden sm:inline">{label}</span>
+            <span className="hidden md:inline">{label}</span>
         </button>
     );
 
     return (
-        <div className="min-h-screen font-sans text-slate-800 dark:text-slate-300 flex flex-col">
-            <header className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 sticky top-0 z-30 px-4">
+        <div className="min-h-screen font-sans text-slate-800 dark:text-slate-300 flex flex-col bg-slate-50 dark:bg-slate-950">
+            <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40 px-4">
                 <div className="container mx-auto flex justify-between items-center h-16">
-                    <div className="flex items-center gap-3">
-                        <img src="https://em-content.zobj.net/source/apple/354/japanese-castle_1f3ef.png" alt="Icon" className="w-8 h-8" />
-                        <h1 className="text-lg font-bold hidden md:block">ROTEIRO JAPÃO</h1>
+                    <div className="flex items-center gap-2">
+                        <img src="https://em-content.zobj.net/source/apple/354/japanese-castle_1f3ef.png" alt="Icon" className="w-7 h-7" />
+                        <h1 className="text-sm font-black tracking-tighter hidden sm:block">JAPÃO 25/26</h1>
                     </div>
 
                     <nav className="flex items-center gap-1 sm:gap-2">
                         <NavButton view="roteiro" label="Roteiro"><ItineraryIcon className="w-5 h-5" /></NavButton>
-                        <NavButton view="mapa" label="Mapas"><MapIcon className="w-5 h-5" /></NavButton>
+                        <NavButton view="mapa" label="Mapa"><MapIcon className="w-5 h-5" /></NavButton>
                         <NavButton view="calendario" label="Agenda"><CalendarIcon className="w-5 h-5" /></NavButton>
-                        <NavButton view="hoteis" label="Hotéis"><HotelIcon className="w-5 h-5" /></NavButton>
 
-                        {!hasKey && (
+                        {!isAiReady ? (
                             <button 
-                                onClick={handleOpenKeyDialog}
-                                className="ml-2 bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold px-3 py-2 rounded-full shadow-lg animate-pulse uppercase"
+                                onClick={handleActivateAi}
+                                className="ml-1 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-[10px] font-black px-3 py-2 rounded-full shadow-lg animate-pulse uppercase"
                             >
-                                Habilitar IA ✨
+                                Ativar IA ✨
                             </button>
+                        ) : (
+                            <div className="ml-1 w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center border border-green-200 dark:border-green-800" title="IA Ativa">
+                                <span className="text-xs">✨</span>
+                            </div>
                         )}
 
-                        <button onClick={toggleTheme} className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800">
+                        <button onClick={toggleTheme} className="ml-1 p-2 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800">
                             {theme === 'light' ? <MoonIcon className="w-5 h-5" /> : <SunIcon className="w-5 h-5" />}
                         </button>
                     </nav>
@@ -113,7 +109,6 @@ function App() {
             
             <main className="container mx-auto flex-1 h-[calc(100vh-4rem)] overflow-hidden">
                 {activeView === 'roteiro' && <ItineraryView />}
-                {activeView === 'checklist' && <ChecklistView />}
                 {activeView === 'mapa' && <MapViewWrapper />}
                 {activeView === 'hoteis' && <HotelsView />}
                 {activeView === 'calendario' && <CalendarView onNavigateToDay={() => setActiveView('roteiro')} />}

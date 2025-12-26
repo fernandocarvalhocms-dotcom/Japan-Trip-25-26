@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useEffect } from 'react';
 import { ItineraryEvent } from '../types';
 import { ActivityIcon, getColorClassName } from './icons';
@@ -19,12 +20,9 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Carregar do cache local
   useEffect(() => {
     const saved = localStorage.getItem(storageKey);
-    if (saved) {
-      setSuggestions(saved);
-    }
+    if (saved) setSuggestions(saved);
   }, [storageKey]);
 
   const handleEnhanceClick = useCallback(async (e: React.MouseEvent) => {
@@ -47,23 +45,20 @@ Use Markdown direto e sem introduções.`;
       setSuggestions(result);
       localStorage.setItem(storageKey, result);
     } catch (err: any) {
-      console.error("Catch no EventCard:", err.message);
+      console.error("Erro no EventCard:", err.message);
       
-      // Se a chave estiver faltando, tentamos abrir o seletor de chave do AI Studio
       if (err.message === "MISSING_API_KEY") {
         const aistudio = (window as any).aistudio;
         if (aistudio) {
-          setError("Chave de API necessária. Abrindo seletor...");
+          setError("Chave necessária. Clique em 'Ativar' no topo ou tente novamente.");
           try {
             await aistudio.openSelectKey();
-            // Após abrir, o processo de injeção da chave é automático.
-            // Avisamos o usuário para tentar novamente.
-            setError("Chave configurada! Clique em 'Melhorar' novamente.");
+            setError("Chave selecionada! Tente 'Melhorar' agora.");
           } catch (selectErr) {
-            setError("Não foi possível abrir o seletor de chaves.");
+            setError("Erro ao abrir seletor de chaves.");
           }
         } else {
-          setError("Chave de API não configurada no ambiente.");
+          setError("Chave de API não configurada. Use o botão no topo.");
         }
       } else {
         setError(err?.message || 'Erro ao conectar com a IA.');
@@ -77,18 +72,14 @@ Use Markdown direto e sem introduções.`;
 
   return (
     <div className="relative">
-      {/* Icone na Timeline */}
       <div className={`absolute -left-[45px] top-0 h-9 w-9 rounded-full bg-white dark:bg-slate-800 flex items-center justify-center ring-4 ring-white dark:ring-slate-800`}>
           <div className={`w-full h-full rounded-full flex items-center justify-center ${colorClass} bg-opacity-10 dark:bg-opacity-20`}>
               <ActivityIcon type={event.type} className={`w-5 h-5 ${colorClass}`} />
           </div>
       </div>
 
-      {/* Card Principal */}
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200/80 dark:border-slate-700/60 overflow-hidden hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-700 transition-all duration-300">
+      <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200/80 dark:border-slate-700/60 overflow-hidden hover:shadow-md transition-all duration-300">
         <div className="p-4 relative">
-          
-          {/* Botão de IA - Posicionamento e área de toque otimizados para Mobile */}
           <button
             onClick={handleEnhanceClick}
             disabled={isLoading || !!suggestions}
@@ -101,12 +92,12 @@ Use Markdown direto e sem introduções.`;
             {isLoading ? <Spinner /> : suggestions ? '✨ Dicas' : '✨ Melhorar'}
           </button>
 
-          <div className="pr-20"> {/* Espaço para o botão não sobrepor o título */}
+          <div className="pr-20">
             <p className="text-xs font-bold text-slate-400 uppercase tracking-tight">{event.time}</p>
             <h4 className="font-bold text-slate-800 dark:text-slate-200 text-lg mt-0.5 leading-tight">{event.title}</h4>
           </div>
           
-          <p className="text-slate-600 dark:text-slate-300 mt-2 text-sm line-clamp-2 sm:line-clamp-none">{event.description}</p>
+          <p className="text-slate-600 dark:text-slate-300 mt-2 text-sm line-clamp-2">{event.description}</p>
           
           <div className="flex items-center gap-1.5 mt-3 text-[11px] text-slate-400 font-medium">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
@@ -114,25 +105,13 @@ Use Markdown direto e sem introduções.`;
             </svg>
             {event.location}
           </div>
-
-          {event.suggestion && (
-            <div className="mt-3 bg-slate-50 dark:bg-slate-900/40 border-l-2 border-slate-300 dark:border-slate-600 p-2.5 rounded-r">
-              <p className="text-xs text-slate-600 dark:text-slate-400 italic">"{event.suggestion}"</p>
-            </div>
-          )}
         </div>
 
-        {/* Conteúdo Gerado ou Erro */}
         {(isLoading || error || suggestions) && (
-          <div className="bg-indigo-50/30 dark:bg-slate-900/60 border-t border-slate-100 dark:border-slate-700/50 px-4 py-3 animate-fade-in">
+          <div className="bg-indigo-50/30 dark:bg-slate-900/60 border-t border-slate-100 dark:border-slate-700/50 px-4 py-3">
               {error && (
-                <div className="flex flex-col gap-2">
-                   <div className="flex items-center gap-2 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-2 rounded text-xs font-semibold">
-                    <span>⚠️ {error}</span>
-                   </div>
-                   {error.includes("Novamente") && (
-                     <p className="text-[10px] text-slate-500 italic">O ambiente do celular exige uma interação manual para cada ativação de chave.</p>
-                   )}
+                <div className="flex items-center gap-2 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-2 rounded text-xs font-semibold">
+                  <span>⚠️ {error}</span>
                 </div>
               )}
               {suggestions && (
@@ -144,7 +123,7 @@ Use Markdown direto e sem introduções.`;
               {isLoading && (
                 <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 text-xs animate-pulse">
                   <Spinner />
-                  <span>Consultando oráculo japonês...</span>
+                  <span>Consultando IA...</span>
                 </div>
               )}
           </div>

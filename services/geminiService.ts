@@ -1,45 +1,49 @@
 
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI } from "@google/genai";
 
 /**
- * Obtém sugestões da IA do Google Gemini.
- * A instância é criada no momento da chamada para garantir que utilize 
- * a chave de API mais recente disponível no ambiente (process.env.API_KEY).
+ * Serviço para interagir com o Google Gemini.
+ * De acordo com as diretrizes, a instância deve ser criada no momento da chamada
+ * para garantir o uso da chave mais recente disponível em process.env.API_KEY.
  */
 export const getSuggestions = async (prompt: string): Promise<string> => {
-  // Acesso direto ao process.env.API_KEY como solicitado nas diretrizes.
-  // Em alguns navegadores mobile, process.env pode não estar definido globalmente,
-  // então usamos uma verificação segura.
-  const apiKey = (typeof process !== 'undefined' && process.env) ? process.env.API_KEY : undefined;
-  
-  if (!apiKey || apiKey === "undefined" || apiKey === "") {
-    throw new Error("MISSING_API_KEY");
+  // A chave DEVE ser obtida exclusivamente de process.env.API_KEY
+  const apiKey = process.env.API_KEY;
+
+  // Verificação prévia para evitar que a SDK lance erro interno de 'API key must be set'
+  if (!apiKey || apiKey === "undefined" || apiKey.trim() === "") {
+    throw new Error("API_KEY_MISSING");
   }
 
   try {
-    // Nova instância a cada chamada para capturar mudanças na chave (conforme regras)
+    // Instanciação obrigatória seguindo o formato: new GoogleGenAI({ apiKey: ... })
     const ai = new GoogleGenAI({ apiKey });
-    
+
+    // Chamada direta conforme diretrizes: ai.models.generateContent
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: "gemini-3-flash-preview",
       contents: prompt,
+      config: {
+        temperature: 0.7,
+        topP: 0.95,
+      }
     });
 
-    // .text é um getter, não um método. Não use response.text()
+    // Acesso à propriedade .text (getter)
     const text = response.text;
     if (!text) {
-      throw new Error("A IA não retornou conteúdo de texto.");
+      throw new Error("A IA retornou uma resposta sem conteúdo de texto.");
     }
 
     return text;
   } catch (error: any) {
-    console.error("Erro na API Gemini:", error);
-
-    // Se o erro indicar que a chave é inválida ou o modelo não existe
-    if (error?.message?.includes("API key") || error?.message?.includes("not found") || error?.message?.includes("404")) {
-      throw new Error("MISSING_API_KEY");
+    console.error("Erro na integração Gemini:", error);
+    
+    // Tratamento específico para erros de autenticação que sugerem nova seleção de chave
+    if (error?.message?.includes("not found") || error?.message?.includes("API key")) {
+      throw new Error("API_KEY_MISSING");
     }
-
-    throw new Error(error instanceof Error ? error.message : "Erro desconhecido na IA.");
+    
+    throw new Error(error instanceof Error ? error.message : "Erro desconhecido na comunicação com a IA.");
   }
 };

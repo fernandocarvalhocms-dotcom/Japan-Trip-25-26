@@ -1,4 +1,3 @@
-
 import { GoogleGenAI } from '@google/genai';
 
 /**
@@ -7,8 +6,16 @@ import { GoogleGenAI } from '@google/genai';
  * a chave de API mais recente disponível no ambiente (process.env.API_KEY).
  */
 export const getSuggestions = async (prompt: string): Promise<string> => {
-  // Always create a new instance using process.env.API_KEY directly as per guidelines
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+  // Verificação de segurança antes de instanciar a SDK
+  const apiKey = process.env.API_KEY;
+  
+  if (!apiKey || apiKey === "undefined" || apiKey === "") {
+    // Lançamos um erro específico que a UI pode capturar para abrir o seletor
+    throw new Error("MISSING_API_KEY");
+  }
+
+  // Cria uma nova instância a cada chamada com a chave atualizada
+  const ai = new GoogleGenAI({ apiKey });
 
   try {
     const response = await ai.models.generateContent({
@@ -16,7 +23,7 @@ export const getSuggestions = async (prompt: string): Promise<string> => {
       contents: prompt,
     });
 
-    // Access the text property directly (not a method)
+    // A propriedade .text é um getter, não um método
     const text = response.text;
     if (!text) {
       throw new Error("A IA não retornou texto.");
@@ -27,7 +34,11 @@ export const getSuggestions = async (prompt: string): Promise<string> => {
     console.error("Erro na API Gemini:", error);
 
     if (error?.message?.includes("404") || error?.message?.includes("not found")) {
-      throw new Error("Modelo não encontrado ou chave inválida. Tente selecionar a chave novamente no botão do topo.");
+      throw new Error("Modelo não encontrado ou projeto inválido. Tente selecionar a chave novamente.");
+    }
+
+    if (error?.message?.includes("API key")) {
+        throw new Error("MISSING_API_KEY");
     }
 
     throw new Error(error instanceof Error ? error.message : "Erro desconhecido na IA.");

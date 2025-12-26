@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { ItineraryView } from './components/ItineraryView';
 import { ChecklistView } from './components/ChecklistView';
@@ -39,22 +38,21 @@ function App() {
     const [theme, toggleTheme] = useTheme();
     const [activeView, setActiveView] = useState<View>('roteiro');
     const [shareStatus, setShareStatus] = useState<'idle' | 'copied'>('idle');
-    const [hasApiKey, setHasApiKey] = useState<boolean>(true);
+    const [hasApiKey, setHasApiKey] = useState<boolean>(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Verifica o status da chave de API ao carregar o app para habilitar IA
     useEffect(() => {
         const checkApiKeyStatus = async () => {
-            // Se já existe no ambiente (desktop), está ok
-            if (process.env.API_KEY) {
+            // Verifica se a chave já existe no ambiente
+            if (process.env.API_KEY && process.env.API_KEY !== "") {
                 setHasApiKey(true);
                 return;
             }
             
             // Caso contrário, checa se o usuário já selecionou uma chave no ambiente do AI Studio
-            // Use casting to any to avoid "identical modifiers" errors in environment-specific global Window augmentation
             const aistudio = (window as any).aistudio;
-            if (aistudio) {
+            if (aistudio && typeof aistudio.hasSelectedApiKey === 'function') {
                 try {
                     const selected = await aistudio.hasSelectedApiKey();
                     setHasApiKey(selected);
@@ -66,6 +64,10 @@ function App() {
             }
         };
         checkApiKeyStatus();
+        
+        // Polling discreto para atualizar o estado caso a chave seja injetada
+        const interval = setInterval(checkApiKeyStatus, 2000);
+        return () => clearInterval(interval);
     }, []);
 
     const handleOpenKeyDialog = async () => {
@@ -73,11 +75,13 @@ function App() {
         if (aistudio) {
             try {
                 await aistudio.openSelectKey();
-                // Assume sucesso para liberar a UI imediatamente (mitigar race conditions)
+                // Assume sucesso para liberar a UI imediatamente e evitar race conditions
                 setHasApiKey(true);
             } catch (err) {
                 console.error("Erro ao abrir seletor de chave:", err);
             }
+        } else {
+            alert("O seletor de chaves só está disponível dentro do ambiente AI Studio.");
         }
     };
 
@@ -230,10 +234,10 @@ function App() {
                             {!hasApiKey && (
                                 <button 
                                     onClick={handleOpenKeyDialog}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 text-xs font-bold rounded-full border border-amber-200 dark:border-amber-800 animate-pulse whitespace-nowrap"
+                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-full shadow-md animate-pulse whitespace-nowrap transition-all"
                                 >
-                                    <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                                    Ativar IA ✨
+                                    <span className="w-2 h-2 rounded-full bg-white animate-ping"></span>
+                                    Configurar IA ✨
                                 </button>
                             )}
 

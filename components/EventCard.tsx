@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useEffect } from 'react';
 import { ItineraryEvent } from '../types';
 import { ActivityIcon, getColorClassName } from './icons';
@@ -32,23 +31,7 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
     e.preventDefault();
     e.stopPropagation();
 
-    if (suggestions) return;
-
-    // Use process.env.API_KEY directly and cast window.aistudio to any to avoid conflicts
-    const apiKey = process.env.API_KEY;
-    const aistudio = (window as any).aistudio;
-    
-    if (!apiKey && aistudio) {
-      setError("Selecione sua chave de API primeiro...");
-      try {
-        await aistudio.openSelectKey();
-        setError(null);
-        // Após abrir, o usuário precisa clicar de novo ou o app recarrega
-      } catch (err) {
-        setError("Não foi possível abrir o seletor de chaves.");
-      }
-      return;
-    }
+    if (suggestions || isLoading) return;
 
     setIsLoading(true);
     setError(null);
@@ -64,11 +47,31 @@ Use Markdown direto e sem introduções.`;
       setSuggestions(result);
       localStorage.setItem(storageKey, result);
     } catch (err: any) {
-      setError(err?.message || 'Erro ao conectar com a IA.');
+      console.error("Catch no EventCard:", err.message);
+      
+      // Se a chave estiver faltando, tentamos abrir o seletor de chave do AI Studio
+      if (err.message === "MISSING_API_KEY") {
+        const aistudio = (window as any).aistudio;
+        if (aistudio) {
+          setError("Chave de API necessária. Abrindo seletor...");
+          try {
+            await aistudio.openSelectKey();
+            // Após abrir, o processo de injeção da chave é automático.
+            // Avisamos o usuário para tentar novamente.
+            setError("Chave configurada! Clique em 'Melhorar' novamente.");
+          } catch (selectErr) {
+            setError("Não foi possível abrir o seletor de chaves.");
+          }
+        } else {
+          setError("Chave de API não configurada no ambiente.");
+        }
+      } else {
+        setError(err?.message || 'Erro ao conectar com a IA.');
+      }
     } finally {
       setIsLoading(false);
     }
-  }, [event.title, event.location, suggestions, storageKey]);
+  }, [event.title, event.location, suggestions, storageKey, isLoading]);
 
   const colorClass = getColorClassName(event.type);
 
@@ -123,8 +126,13 @@ Use Markdown direto e sem introduções.`;
         {(isLoading || error || suggestions) && (
           <div className="bg-indigo-50/30 dark:bg-slate-900/60 border-t border-slate-100 dark:border-slate-700/50 px-4 py-3 animate-fade-in">
               {error && (
-                <div className="flex items-center gap-2 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-2 rounded text-xs font-semibold">
-                  <span>⚠️ {error}</span>
+                <div className="flex flex-col gap-2">
+                   <div className="flex items-center gap-2 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-2 rounded text-xs font-semibold">
+                    <span>⚠️ {error}</span>
+                   </div>
+                   {error.includes("Novamente") && (
+                     <p className="text-[10px] text-slate-500 italic">O ambiente do celular exige uma interação manual para cada ativação de chave.</p>
+                   )}
                 </div>
               )}
               {suggestions && (

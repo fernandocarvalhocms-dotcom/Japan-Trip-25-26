@@ -34,27 +34,29 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
     setIsLoading(true);
     setError(null);
 
-    const prompt = `Como um guia expert em turismo no Japão, forneça 3 dicas rápidas para o evento "${event.title}" em ${event.location}: transporte, comida próxima e curiosidade. Use Markdown direto.`;
+    const prompt = `Como um guia expert em turismo no Japão, forneça 3 dicas rápidas para o evento "${event.title}" em ${event.location}: transporte, comida próxima e curiosidade cultural curta. Responda em Markdown direto.`;
 
     try {
       const result = await getSuggestions(prompt);
       setSuggestions(result);
       localStorage.setItem(storageKey, result);
     } catch (err: any) {
-      if (err.message === "KEY_NOT_CONFIGURED") {
+      console.error("Erro na IA:", err.message);
+
+      if (err.message === "API_KEY_MISSING" || err.message === "API_KEY_INVALID") {
         const aistudio = (window as any).aistudio;
         if (aistudio && typeof aistudio.openSelectKey === 'function') {
           try {
             await aistudio.openSelectKey();
-            setError("Chave configurada! Tente novamente.");
+            setError("Chave configurada! Tente clicar no botão novamente.");
           } catch (e) {
-            setError("Ative a IA no topo.");
+            setError("Por favor, ative a IA no topo da página.");
           }
         } else {
-          setError("Chave de API não detectada.");
+          setError("IA não configurada. Use o botão no topo.");
         }
       } else {
-        setError("Erro na IA. Tente novamente.");
+        setError("Não foi possível carregar as dicas. Tente novamente.");
       }
     } finally {
       setIsLoading(false);
@@ -116,7 +118,7 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
               {isLoading && (
                 <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold animate-pulse">
                   <Spinner />
-                  <span>CONSULTANDO IA...</span>
+                  <span>PREPARANDO DICAS...</span>
                 </div>
               )}
           </div>

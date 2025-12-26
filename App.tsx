@@ -35,37 +35,48 @@ function App() {
     const [activeView, setActiveView] = useState<View>('roteiro');
     const [hasApiKey, setHasApiKey] = useState<boolean>(false);
 
+    // Verifica a chave periodicamente para atualizar o estado da UI no mobile
     useEffect(() => {
-        const checkKey = async () => {
-            if (process.env.API_KEY && process.env.API_KEY !== "undefined" && process.env.API_KEY !== "") {
+        const checkKeyStatus = async () => {
+            const keyInEnv = process.env.API_KEY;
+            const isKeyPresent = !!(keyInEnv && keyInEnv !== "undefined" && keyInEnv.length > 5);
+            
+            if (isKeyPresent) {
                 setHasApiKey(true);
-                return;
-            }
-            const aistudio = (window as any).aistudio;
-            if (aistudio && typeof aistudio.hasSelectedApiKey === 'function') {
-                try {
-                    const selected = await aistudio.hasSelectedApiKey();
-                    setHasApiKey(selected);
-                } catch (e) {
-                    setHasApiKey(false);
+            } else {
+                // Tenta verificar via API do Studio se disponível
+                const aistudio = (window as any).aistudio;
+                if (aistudio && typeof aistudio.hasSelectedApiKey === 'function') {
+                    try {
+                        const selected = await aistudio.hasSelectedApiKey();
+                        setHasApiKey(selected);
+                    } catch (e) {
+                        setHasApiKey(false);
+                    }
                 }
             }
         };
 
-        checkKey();
-        const timer = setInterval(checkKey, 2000);
-        return () => clearInterval(timer);
+        checkKeyStatus();
+        const interval = setInterval(checkKeyStatus, 1500); // Polling agressivo para mobile
+        return () => clearInterval(interval);
     }, []);
 
     const handleOpenKeyDialog = async () => {
         const aistudio = (window as any).aistudio;
+        
+        // Chamada direta sem verificações extras para evitar bloqueios de pop-up no mobile
         if (aistudio && typeof aistudio.openSelectKey === 'function') {
             try {
                 await aistudio.openSelectKey();
+                // Assumimos sucesso imediatamente para evitar race condition
                 setHasApiKey(true);
             } catch (err) {
-                console.error("Erro ao abrir seletor:", err);
+                console.error("Erro ao abrir seletor de chaves:", err);
+                alert("Não foi possível abrir o seletor de chaves. Verifique se o app tem as permissões necessárias.");
             }
+        } else {
+            alert("O serviço de IA ainda está carregando ou não está disponível neste navegador.");
         }
     };
 
@@ -99,7 +110,8 @@ function App() {
                         {!hasApiKey && (
                             <button 
                                 onClick={handleOpenKeyDialog}
-                                className="ml-2 bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold px-3 py-2 rounded-full shadow-lg animate-pulse uppercase tracking-tighter transition-all"
+                                className="ml-2 bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold px-3 py-2 rounded-full shadow-lg animate-pulse uppercase tracking-tighter"
+                                type="button"
                             >
                                 Ativar IA ✨
                             </button>

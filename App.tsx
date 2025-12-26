@@ -35,48 +35,34 @@ function App() {
     const [activeView, setActiveView] = useState<View>('roteiro');
     const [hasApiKey, setHasApiKey] = useState<boolean>(false);
 
-    // Verifica a chave periodicamente para atualizar o estado da UI no mobile
+    // Verificação robusta para UI
     useEffect(() => {
-        const checkKeyStatus = async () => {
-            const keyInEnv = process.env.API_KEY;
-            const isKeyPresent = !!(keyInEnv && keyInEnv !== "undefined" && keyInEnv.length > 5);
-            
+        const check = async () => {
+            const isKeyPresent = !!(process.env.API_KEY && process.env.API_KEY.length > 5);
             if (isKeyPresent) {
                 setHasApiKey(true);
             } else {
-                // Tenta verificar via API do Studio se disponível
                 const aistudio = (window as any).aistudio;
-                if (aistudio && typeof aistudio.hasSelectedApiKey === 'function') {
+                if (aistudio?.hasSelectedApiKey) {
                     try {
                         const selected = await aistudio.hasSelectedApiKey();
                         setHasApiKey(selected);
-                    } catch (e) {
-                        setHasApiKey(false);
-                    }
+                    } catch (e) {}
                 }
             }
         };
-
-        checkKeyStatus();
-        const interval = setInterval(checkKeyStatus, 1500); // Polling agressivo para mobile
+        check();
+        const interval = setInterval(check, 3000);
         return () => clearInterval(interval);
     }, []);
 
     const handleOpenKeyDialog = async () => {
         const aistudio = (window as any).aistudio;
-        
-        // Chamada direta sem verificações extras para evitar bloqueios de pop-up no mobile
-        if (aistudio && typeof aistudio.openSelectKey === 'function') {
+        if (aistudio?.openSelectKey) {
             try {
                 await aistudio.openSelectKey();
-                // Assumimos sucesso imediatamente para evitar race condition
                 setHasApiKey(true);
-            } catch (err) {
-                console.error("Erro ao abrir seletor de chaves:", err);
-                alert("Não foi possível abrir o seletor de chaves. Verifique se o app tem as permissões necessárias.");
-            }
-        } else {
-            alert("O serviço de IA ainda está carregando ou não está disponível neste navegador.");
+            } catch (err) {}
         }
     };
 
@@ -111,7 +97,6 @@ function App() {
                             <button 
                                 onClick={handleOpenKeyDialog}
                                 className="ml-2 bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold px-3 py-2 rounded-full shadow-lg animate-pulse uppercase tracking-tighter"
-                                type="button"
                             >
                                 Ativar IA ✨
                             </button>

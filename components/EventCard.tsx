@@ -25,43 +25,43 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
     if (saved) setSuggestions(saved);
   }, [storageKey]);
 
-  const handleEnhanceClick = useCallback(async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    if (suggestions || isLoading) return;
-
+  const runAiQuery = async () => {
     setIsLoading(true);
     setError(null);
-
-    const prompt = `Como um guia expert em turismo no Japão, forneça 3 dicas rápidas para o evento "${event.title}" em ${event.location}: transporte, comida próxima e curiosidade cultural curta. Responda em Markdown direto.`;
+    const prompt = `Como um guia expert em turismo no Japão, forneça 3 dicas rápidas para o evento "${event.title}" em ${event.location}: transporte, comida próxima e uma curiosidade cultural. Responda em Markdown direto sem introduções.`;
 
     try {
       const result = await getSuggestions(prompt);
       setSuggestions(result);
       localStorage.setItem(storageKey, result);
     } catch (err: any) {
-      console.error("Erro na IA:", err.message);
-
-      if (err.message === "API_KEY_MISSING" || err.message === "API_KEY_INVALID") {
+      if (err.message === "API_KEY_REQUIRED" || err.message === "API_KEY_INVALID") {
         const aistudio = (window as any).aistudio;
         if (aistudio && typeof aistudio.openSelectKey === 'function') {
           try {
+            // Se a chave falhar, abrimos o seletor e avisamos o usuário
             await aistudio.openSelectKey();
-            setError("Chave configurada! Tente clicar no botão novamente.");
+            setError("Chave selecionada! Clique em 'IA' novamente para carregar.");
           } catch (e) {
-            setError("Por favor, ative a IA no topo da página.");
+            setError("Erro ao abrir seletor de chaves.");
           }
         } else {
-          setError("IA não configurada. Use o botão no topo.");
+          setError("IA não configurada no navegador.");
         }
       } else {
-        setError("Não foi possível carregar as dicas. Tente novamente.");
+        setError("Erro na conexão com a IA.");
       }
     } finally {
       setIsLoading(false);
     }
-  }, [event.title, event.location, suggestions, storageKey, isLoading]);
+  };
+
+  const handleEnhanceClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (suggestions || isLoading) return;
+    runAiQuery();
+  };
 
   const colorClass = getColorClassName(event.type);
 
@@ -118,7 +118,7 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
               {isLoading && (
                 <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold animate-pulse">
                   <Spinner />
-                  <span>PREPARANDO DICAS...</span>
+                  <span>CONSULTANDO IA...</span>
                 </div>
               )}
           </div>

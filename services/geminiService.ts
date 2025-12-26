@@ -2,19 +2,18 @@
 import { GoogleGenAI } from "@google/genai";
 
 /**
- * Função centralizada para chamadas ao Gemini.
- * Segue a regra de criar a instância GoogleGenAI imediatamente antes do uso.
+ * Serviço de IA otimizado para funcionamento mobile e JIT (Just-In-Time).
  */
 export const getSuggestions = async (prompt: string): Promise<string> => {
-  // Acesso direto à variável de ambiente injetada
   const apiKey = process.env.API_KEY;
 
+  // Se não houver chave, lançamos um erro específico que a UI capturará para abrir o seletor
   if (!apiKey || apiKey === "undefined" || apiKey.trim() === "") {
-    throw new Error("API_KEY_MISSING");
+    throw new Error("API_KEY_REQUIRED");
   }
 
   try {
-    // Instanciação JIT conforme diretrizes de segurança de chave
+    // Instanciação obrigatória logo antes do uso
     const ai = new GoogleGenAI({ apiKey });
     
     const response = await ai.models.generateContent({
@@ -23,16 +22,18 @@ export const getSuggestions = async (prompt: string): Promise<string> => {
     });
 
     const text = response.text;
-    if (!text) {
-      throw new Error("Resposta vazia da IA.");
-    }
+    if (!text) throw new Error("Resposta vazia.");
 
     return text;
   } catch (error: any) {
-    console.error("Erro na integração Gemini:", error);
-
-    // Erro específico que exige reset de chave conforme diretrizes
-    if (error?.message?.includes("Requested entity was not found") || error?.message?.includes("API key")) {
+    console.error("Erro Gemini:", error);
+    
+    // Erros que indicam necessidade de re-seleção de chave (Paid project/Billing issues)
+    if (
+      error?.message?.includes("not found") || 
+      error?.message?.includes("API key") || 
+      error?.status === 404
+    ) {
       throw new Error("API_KEY_INVALID");
     }
     

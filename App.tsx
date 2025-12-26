@@ -35,29 +35,34 @@ function App() {
     const [activeView, setActiveView] = useState<View>('roteiro');
     const [hasKey, setHasKey] = useState<boolean>(false);
 
-    // Checa se já existe uma chave selecionada no ambiente
     useEffect(() => {
-        const checkKey = async () => {
+        const checkKeyStatus = async () => {
             const aistudio = (window as any).aistudio;
-            if (aistudio?.hasSelectedApiKey) {
+            if (aistudio && typeof aistudio.hasSelectedApiKey === 'function') {
                 const active = await aistudio.hasSelectedApiKey();
                 setHasKey(active);
             } else if (process.env.API_KEY && process.env.API_KEY !== "undefined") {
                 setHasKey(true);
             }
         };
-        checkKey();
-        const interval = setInterval(checkKey, 3000);
+        checkKeyStatus();
+        const interval = setInterval(checkKeyStatus, 2000);
         return () => clearInterval(interval);
     }, []);
 
     const handleActivateAi = async () => {
-        const aistudio = (window as any).aistudio;
-        if (aistudio?.openSelectKey) {
-            await aistudio.openSelectKey();
-            setHasKey(true);
-        } else {
-            alert("Para usar a IA, abra este link em um navegador moderno e selecione sua chave do Google.");
+        try {
+            const aistudio = (window as any).aistudio;
+            if (aistudio && typeof aistudio.openSelectKey === 'function') {
+                await aistudio.openSelectKey();
+                // Assumimos sucesso imediatamente para liberar a UI conforme diretrizes
+                setHasKey(true);
+            } else {
+                console.warn("AI Studio bridge não detectado.");
+                alert("Para usar a IA, utilize um navegador compatível com Google AI Studio.");
+            }
+        } catch (e) {
+            console.error("Erro ao abrir seletor:", e);
         }
     };
 
@@ -94,7 +99,7 @@ function App() {
                                     ? 'bg-green-500/10 border-green-500/30 text-green-600' 
                                     : 'bg-amber-500 border-amber-600 text-white animate-pulse'
                                 }`}
-                            title={hasKey ? "IA Conectada ✨" : "Ativar IA ✨"}
+                            title={hasKey ? "IA Ativa (Clique para trocar chave) ✨" : "Ativar IA ✨"}
                         >
                             <span className="text-sm">✨</span>
                         </button>

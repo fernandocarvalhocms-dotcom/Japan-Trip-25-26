@@ -6,15 +6,15 @@ import { GoogleGenAI } from "@google/genai";
  * Importante: A instância deve ser criada JIT (Just-In-Time) para capturar a chave ativa.
  */
 export const getSuggestions = async (prompt: string): Promise<string> => {
+  // A chave é injetada dinamicamente pelo ambiente
   const apiKey = process.env.API_KEY;
 
-  // Verifica se a chave existe e é válida
   if (!apiKey || apiKey === "undefined" || apiKey.trim() === "") {
     throw new Error("AUTH_REQUIRED");
   }
 
   try {
-    // Sempre cria uma nova instância para garantir o uso da chave atualizada
+    // Instância nova a cada chamada conforme diretrizes para garantir chave atualizada
     const ai = new GoogleGenAI({ apiKey });
     
     const response = await ai.models.generateContent({
@@ -23,17 +23,23 @@ export const getSuggestions = async (prompt: string): Promise<string> => {
     });
 
     const text = response.text;
-    if (!text) throw new Error("A IA não retornou um texto válido.");
+    if (!text) throw new Error("A IA não retornou conteúdo.");
 
     return text;
   } catch (error: any) {
-    console.error("Erro no Gemini Service:", error);
+    const errorMessage = error?.message || "";
+    console.error("Erro Gemini:", errorMessage);
     
-    // Erros de autenticação ou cota
-    if (error?.status === 403 || error?.status === 401 || error?.message?.includes("API key")) {
+    // Se a entidade não for encontrada ou a chave for inválida, solicitamos nova seleção
+    if (
+      errorMessage.includes("not found") || 
+      errorMessage.includes("API key") ||
+      errorMessage.includes("403") ||
+      errorMessage.includes("401")
+    ) {
       throw new Error("AUTH_REQUIRED");
     }
     
-    throw new Error("Erro de conexão. Tente novamente.");
+    throw new Error("Erro na conexão com a IA.");
   }
 };

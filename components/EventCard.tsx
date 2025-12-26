@@ -9,7 +9,7 @@ interface EventCardProps {
 }
 
 export const EventCard: React.FC<EventCardProps> = ({ event }) => {
-  const storageKey = `jap_tips_v4_${event.id}`;
+  const storageKey = `jap_tips_v5_${event.id}`;
   const [tips, setTips] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -19,13 +19,22 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
     if (saved) setTips(saved);
   }, [storageKey]);
 
+  const triggerKeySelector = async () => {
+    const aistudio = (window as any).aistudio;
+    if (aistudio && typeof aistudio.openSelectKey === 'function') {
+      await aistudio.openSelectKey();
+      return true;
+    }
+    return false;
+  };
+
   const handleAskAi = async () => {
     if (loading || tips) return;
     
     setLoading(true);
     setError(null);
 
-    const prompt = `Dê 3 dicas curtas e essenciais para "${event.title}" em ${event.location}: transporte prático, o que comer perto e uma curiosidade cultural rápida. Use Markdown simples, em português.`;
+    const prompt = `Como um guia expert no Japão, dê 3 dicas curtas para "${event.title}" em ${event.location}. Foque em: transporte, o que comer perto e uma dica cultural. Use Markdown.`;
 
     try {
       const result = await getSuggestions(prompt);
@@ -33,15 +42,14 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
       localStorage.setItem(storageKey, result);
     } catch (err: any) {
       if (err.message === "AUTH_REQUIRED") {
-        const aistudio = (window as any).aistudio;
-        if (aistudio?.openSelectKey) {
-            await aistudio.openSelectKey();
-            setError("Chave ativada! Clique no botão de novo.");
+        const opened = await triggerKeySelector();
+        if (opened) {
+          setError("Chave selecionada! Clique novamente para carregar.");
         } else {
-            setError("Por favor, ative a IA no ícone ✨ do topo.");
+          setError("Configure sua API Key no topo da página.");
         }
       } else {
-        setError("Erro temporário. Tente novamente.");
+        setError(err.message || "Falha ao obter dicas.");
       }
     } finally {
       setLoading(false);
@@ -52,7 +60,7 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
 
   return (
     <div className="relative group">
-      <div className={`absolute -left-[45px] top-0 h-9 w-9 rounded-full bg-white dark:bg-slate-900 flex items-center justify-center ring-4 ring-slate-50 dark:ring-slate-950 z-10 shadow-sm`}>
+      <div className={`absolute -left-[45px] top-0 h-9 w-9 rounded-full bg-white dark:bg-slate-900 flex items-center justify-center ring-4 ring-slate-50 dark:ring-slate-950 z-10 shadow-sm transition-transform active:scale-110`}>
           <div className={`w-full h-full rounded-full flex items-center justify-center ${colorClass} bg-opacity-10`}>
               <ActivityIcon type={event.type} className={`w-5 h-5 ${colorClass}`} />
           </div>
